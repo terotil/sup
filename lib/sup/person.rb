@@ -7,8 +7,11 @@ class Person
   def initialize name, email
     raise ArgumentError, "email can't be nil" unless email
 
+    email.check
+    name.check if name
+
     @name = if name
-      name = name.strip.gsub(/\s+/, " ")
+      name = name.strip.gsub(/( \t)+/, " ")
       name =~ /^(['"]\s*)(.*?)(\s*["'])$/ ? $2 : name
     end
 

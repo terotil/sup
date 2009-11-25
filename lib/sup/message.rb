@@ -60,8 +60,16 @@ class Message
     #parse_header(opts[:header] || @source.load_header(@source_info))
   end
 
+  def decode_header_field v
+    return unless v
+    v = Iconv.easy_decode $encoding, 'ASCII', v
+    v = Rfc2047.decode_to $encoding, v
+    v.check
+    v
+  end
+
   def parse_header encoded_header
-    header = SavingHash.new { |k| encoded_header[k] && Iconv.easy_decode($encoding, 'ASCII', encoded_header[k]) }
+    header = SavingHash.new { |k| decode_header_field encoded_header[k] }
 
     @id = if header["message-id"]
       mid = header["message-id"] =~ /<(.+?)>/ ? $1 : header["message-id"]
@@ -417,6 +425,42 @@ private
     end
   end
 
+  # XXX replace with DummySource?
+  class PayloadSource
+    def initialize raw
+      @raw = raw
+    end
+
+    def load_header offset
+      Source.parse_raw_email_header StringIO.new(raw_header(offset))
+    end
+    
+    def load_message offset
+      RMail::Parser.read raw_message(offset)
+    end
+    
+    def raw_header offset
+      ret = ""
+      f = StringIO.new(@raw)
+      until f.eof? || (l = f.gets) =~ /^$/
+        ret += l
+      end
+      ret
+    end
+    
+    def raw_message offset
+      @raw
+    end
+    
+    def each_raw_message_line offset
+      ret = ""
+      f = StringIO.new(@raw)
+      until f.eof?
+        yield f.gets
+      end
+    end
+  end
+
   ## takes a RMail::Message, breaks it into Chunk:: classes.
   def message_to_chunks m, encrypted=false, sibling_types=[]
     if m.multipart?
@@ -436,20 +480,10 @@ private
       chunks
     elsif m.header.content_type && m.header.content_type.downcase == "message/rfc822"
       if m.body
-        payload = RMail::Parser.read(m.body)
-        from = payload.header.from.first ? payload.header.from.first.format : ""
-        to = payload.header.to.map { |p| p.format }.join(", ")
-        cc = payload.header.cc.map { |p| p.format }.join(", ")
-        subj = payload.header.subject
-        subj = subj ? Message.normalize_subj(payload.header.subject.gsub(/\s+/, " ").gsub(/\s+$/, "")) : subj
-        if Rfc2047.is_encoded? subj
-          subj = Rfc2047.decode_to $encoding, subj
-        end
-        msgdate = payload.header.date
-        from_person = from ? Person.from_address(from) : nil
-        to_people = to ? Person.from_address_list(to) : nil
-        cc_people = cc ? Person.from_address_list(cc) : nil
-        [Chunk::EnclosedMessage.new(from_person, to_people, cc_people, msgdate, subj)] + message_to_chunks(payload, encrypted)
+        payload_source = PayloadSource.new m.body
+        m2 = Message.new :source => payload_source, :source_info => 0
+        m2.load_from_source!
+        [Chunk::EnclosedMessage.new(m2.from, m2.to, m2.cc, m2.date, m2.subj)] + m2.chunks
       else
         debug "no body for message/rfc822 enclosure; skipping"
         []
