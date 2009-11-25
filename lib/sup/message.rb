@@ -235,8 +235,9 @@ class Message
           ## bloat the index.
           ## actually, it's also the differentiation between to/cc/bcc,
           ## so i will keep this.
-          parse_header @source.load_header(@source_info)
-          message_to_chunks @source.load_message(@source_info)
+          rmsg = @source.load_message(@source_info)
+          parse_header rmsg.header
+          message_to_chunks rmsg
         rescue SourceError, SocketError => e
           warn "problem getting messages from #{@source}: #{e.message}"
           ## we need force_to_top here otherwise this window will cover
