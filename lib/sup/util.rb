@@ -665,7 +665,7 @@ class Iconv
     begin
       returning(Iconv.iconv(target + "//IGNORE", charset, text + " ").join[0 .. -2]) { |str| str.check }
     rescue Errno::EINVAL, Iconv::InvalidEncoding, Iconv::InvalidCharacter, Iconv::IllegalSequence, String::CheckError
-      warn "couldn't transcode text from #{charset} to #{target} (\"#{text[0 ... 20]}\"...) (got #{$!.message})"
+      warn "couldn't transcode text from #{charset} to #{target} (#{text[0 ... 20].inspect}...) (got #{$!.message})"
       "[could not decode: #{$!.message}]"
     end
   end
