@@ -76,6 +76,8 @@ EOS
     entry = synchronize { get_entry id }
     return unless entry
 
+    check_entry entry
+
     source = SourceManager[entry[:source_id]]
     raise "invalid source #{entry[:source_id]}" unless source
 
@@ -95,6 +97,17 @@ EOS
   def add_message m; sync_message m end
   def update_message m; sync_message m end
   def update_message_state m; sync_message m end
+
+  def check_entry e
+    e[:message_id].check
+    e[:snippet].check if e[:snippet]
+    ([e[:from]] + e[:to] + e[:cc] + e[:bcc]).each do |email,name|
+      email.check if email
+      name.check if name
+    end
+    e[:subject].check if e[:subject]
+    (e[:refs] + e[:replytos]).each { |s| s.check }
+  end
 
   def sync_message m, opts={}
     entry = synchronize { get_entry m.id }
@@ -118,6 +131,8 @@ EOS
       :refs => (entry[:refs] || m.refs),
       :replytos => (entry[:replytos] || m.replytos),
     }
+
+    check_entry d
 
     labels.each { |l| LabelManager << l }
 
