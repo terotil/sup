@@ -652,7 +652,6 @@ end
 
 class Iconv
   def self.easy_decode target, charset, text
-    return text if charset =~ /^(x-unknown|unknown[-_ ]?8bit|ascii[-_ ]?7[-_ ]?bit)$/i
     charset = case charset
       when /UTF[-_ ]?8/i then "utf-8"
       when /(iso[-_ ])?latin[-_ ]?1$/i then "ISO-8859-1"
@@ -662,10 +661,10 @@ class Iconv
     end
 
     begin
-      Iconv.iconv(target + "//IGNORE", charset, text + " ").join[0 .. -2]
-    rescue Errno::EINVAL, Iconv::InvalidEncoding, Iconv::InvalidCharacter, Iconv::IllegalSequence => e
-      warn "couldn't transcode text from #{charset} to #{target} (\"#{text[0 ... 20]}\"...) (got #{e.message}); using original as is"
-      text
+      returning(Iconv.iconv(target + "//IGNORE", charset, text + " ").join[0 .. -2]) { |str| str.check }
+    rescue Errno::EINVAL, Iconv::InvalidEncoding, Iconv::InvalidCharacter, Iconv::IllegalSequence, String::CheckError
+      warn "couldn't transcode text from #{charset} to #{target} (\"#{text[0 ... 20]}\"...) (got #{$!.message})"
+      "[could not decode: #{$!.message}]"
     end
   end
 end
