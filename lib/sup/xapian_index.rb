@@ -76,8 +76,6 @@ EOS
     entry = synchronize { get_entry id }
     return unless entry
 
-    check_entry entry
-
     source = SourceManager[entry[:source_id]]
     raise "invalid source #{entry[:source_id]}" unless source
 
@@ -131,8 +129,6 @@ EOS
       :refs => (entry[:refs] || m.refs),
       :replytos => (entry[:replytos] || m.replytos),
     }
-
-    check_entry d
 
     labels.each { |l| LabelManager << l }
 
@@ -403,7 +399,9 @@ EOS
 
   def get_entry id
     return unless doc = find_doc(id)
-    Marshal.load doc.data
+    entry = Marshal.load doc.data
+    check_entry entry
+    entry
   end
 
   def thread_killed? thread_id
@@ -545,6 +543,7 @@ EOS
     doc.add_value MSGID_VALUENO, m.id
     doc.add_value THREAD_VALUENO, (thread_ids * ',')
     doc.add_value DATE_VALUENO, date_value
+    check_entry entry
     doc.data = Marshal.dump entry
 
     @xapian.replace_document docid, doc
