@@ -97,14 +97,20 @@ EOS
   def update_message_state m; sync_message m end
 
   def check_entry e
-    e[:message_id].check
-    e[:snippet].check if e[:snippet]
-    ([e[:from]] + e[:to] + e[:cc] + e[:bcc]).each do |email,name|
-      email.check if email
-      name.check if name
+    begin
+      e[:message_id].check
+      e[:snippet].check if e[:snippet]
+      ([e[:from]] + e[:to] + e[:cc] + e[:bcc]).each do |email,name|
+        email.check if email
+        name.check if name
+      end
+      e[:subject].check if e[:subject]
+      (e[:refs] + e[:replytos]).each { |s| s.check }
+    rescue String::CheckError
+      puts "Invalid index entry:"
+      pp e
+      raise
     end
-    e[:subject].check if e[:subject]
-    (e[:refs] + e[:replytos]).each { |s| s.check }
   end
 
   def sync_message m, opts={}
