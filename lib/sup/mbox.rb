@@ -1,3 +1,4 @@
+# encoding: utf-8
 require "sup/mbox/loader"
 require "sup/mbox/ssh-file"
 require "sup/mbox/ssh-loader"

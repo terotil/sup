@@ -1,3 +1,4 @@
+# encoding: utf-8
 require "sup"
 require 'stringio'
 require 'thread'

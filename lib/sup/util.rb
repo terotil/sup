@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'thread'
 require 'lockfile'
 require 'mime/types'

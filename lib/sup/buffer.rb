@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'etc'
 require 'thread'
 require 'ncurses'
