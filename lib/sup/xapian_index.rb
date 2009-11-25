@@ -135,6 +135,9 @@ EOS
     synchronize do
       index_message m, d, opts
     end
+
+    get_entry m.id
+
     true
   end
   private :sync_message
