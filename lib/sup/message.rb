@@ -60,13 +60,8 @@ class Message
     #parse_header(opts[:header] || @source.load_header(@source_info))
   end
 
-  def parse_header header
-    ## forcibly decode these headers from and to the current encoding,
-    ## which serves to strip out characters that aren't displayable
-    ## (and which would otherwise be screwing up the display)
-    %w(from to subject cc bcc).each do |f|
-      header[f] = Iconv.easy_decode($encoding, $encoding, header[f]) if header[f]
-    end
+  def parse_header encoded_header
+    header = SavingHash.new { |k| encoded_header[k] && Iconv.easy_decode($encoding, 'ASCII', encoded_header[k]) }
 
     @id = if header["message-id"]
       mid = header["message-id"] =~ /<(.+?)>/ ? $1 : header["message-id"]
@@ -126,6 +121,7 @@ class Message
     @source_marked_read = header["status"] == "RO"
     @list_subscribe = header["list-subscribe"]
     @list_unsubscribe = header["list-unsubscribe"]
+    header.each { |k,v| v.check if v }
   end
 
   ## Expected index entry format:
