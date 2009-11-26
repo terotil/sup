@@ -96,7 +96,8 @@ EOS
   def update_message m; sync_message m end
   def update_message_state m; sync_message m end
 
-  def check_entry e
+  def debug_check_entry e
+    return unless DEBUG_ENCODING
     begin
       e[:message_id].check
       e[:snippet].check if e[:snippet]
@@ -409,7 +410,7 @@ EOS
   def get_entry id
     return unless doc = find_doc(id)
     entry = Marshal.load doc.data
-    check_entry entry
+    debug_check_entry entry
     entry
   end
 
@@ -555,10 +556,9 @@ EOS
     doc.add_value MSGID_VALUENO, m.id
     doc.add_value THREAD_VALUENO, (thread_ids * ',')
     doc.add_value DATE_VALUENO, date_value
-    check_entry entry
+    debug_check_entry(entry)
     doc.data = Marshal.dump entry
-    new_entry = Marshal.load doc.data
-    check_entry new_entry
+    debug_check_entry(Marshal.load doc.data)
 
     @xapian.replace_document docid, doc
   end

@@ -178,7 +178,7 @@ class String
   ## nasty multibyte hack for ruby 1.8. if it's utf-8, split into chars using
   ## the utf8 regex and count those. otherwise, use the byte length.
   def display_length
-    check
+    debug_check
     if RUBY_VERSION < '1.9.1' && ($encoding == "UTF-8" || $encoding == "utf8")
       scan(/./u).size
     else
@@ -302,12 +302,18 @@ class String
   class CheckError < ArgumentError; end
   def check
     begin
+      File.open('out', 'w') { |io| io.write self }
       fail "unexpected encoding #{encoding}" if respond_to?(:encoding) && encoding != Encoding::UTF_8
-      scan //
-      fail "invalid encoding" if respond_to?(:valid_encoding) && !valid_encoding?
+      fail "invalid encoding" if respond_to?(:valid_encoding?) && !valid_encoding?
+      scan // if DEBUG_ENCODING
     rescue
       raise CheckError.new($!.message)
     end
+  end
+
+  def debug_check
+    return unless DEBUG_ENCODING
+    check
   end
 
   def ascii
@@ -320,7 +326,7 @@ class String
       end
     end
     out.force_encoding Encoding::UTF_8 if out.respond_to? :force_encoding
-    out.check
+    out.debug_check
     out
   end
 end

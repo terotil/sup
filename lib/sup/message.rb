@@ -66,7 +66,7 @@ class Message
     return unless v.size < MAX_HEADER_VALUE_SIZE # avoid regex blowup on spam
     v = Iconv.easy_decode $encoding, 'ASCII', v
     v = Rfc2047.decode_to $encoding, v
-    v.check
+    v.debug_check
     v
   end
 
@@ -131,7 +131,7 @@ class Message
     @source_marked_read = header["status"] == "RO"
     @list_subscribe = header["list-subscribe"]
     @list_unsubscribe = header["list-unsubscribe"]
-    header.each { |k,v| v.check if v }
+    header.each { |k,v| v.debug_check if v }
   end
 
   ## Expected index entry format:

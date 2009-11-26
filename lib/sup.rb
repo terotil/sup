@@ -11,6 +11,8 @@ begin
 rescue LoadError
 end
 
+DEBUG_ENCODING = true
+
 class Object
   ## this is for debugging purposes because i keep calling #id on the
   ## wrong object and i want it to throw an exception
