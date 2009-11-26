@@ -309,6 +309,20 @@ class String
       raise CheckError.new($!.message)
     end
   end
+
+  def ascii
+    out = ""
+    each_byte do |b|
+      if (b & 128) != 0
+        out << "\\x#{b.to_s 16}"
+      else
+        out << b.chr
+      end
+    end
+    out.force_encoding Encoding::UTF_8
+    out.check
+    out
+  end
 end
 
 class Numeric
