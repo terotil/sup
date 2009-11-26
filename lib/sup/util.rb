@@ -662,6 +662,7 @@ class Iconv
       when /(iso[-_ ])?latin[-_ ]?1$/i then "ISO-8859-1"
       when /iso[-_ ]?8859[-_ ]?15/i then 'ISO-8859-15'
       when /unicode[-_ ]1[-_ ]1[-_ ]utf[-_]7/i then "utf-7"
+      when /^euc$/i then 'EUC-JP' # XXX try them all?
       when /^(x-unknown|unknown[-_ ]?8bit|ascii[-_ ]?7[-_ ]?bit)$/i then 'ASCII'
       else orig_charset
     end
