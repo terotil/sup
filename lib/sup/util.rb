@@ -655,6 +655,8 @@ end
 
 class Iconv
   def self.easy_decode target, orig_charset, text
+    text = text.dup
+    text.force_encoding Encoding::BINARY
     charset = case orig_charset
       when /UTF[-_ ]?8/i then "utf-8"
       when /(iso[-_ ])?latin[-_ ]?1$/i then "ISO-8859-1"
