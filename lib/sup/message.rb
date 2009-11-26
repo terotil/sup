@@ -63,7 +63,7 @@ class Message
 
   def decode_header_field v
     return unless v
-    return unless v.bytesize < MAX_HEADER_VALUE_SIZE # avoid regex blowup on spam
+    return unless v.size < MAX_HEADER_VALUE_SIZE # avoid regex blowup on spam
     v = Iconv.easy_decode $encoding, 'ASCII', v
     v = Rfc2047.decode_to $encoding, v
     v.check

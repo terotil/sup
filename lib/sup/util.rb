@@ -319,7 +319,7 @@ class String
         out << b.chr
       end
     end
-    out.force_encoding Encoding::UTF_8
+    out.force_encoding Encoding::UTF_8 if out.respond_to? :force_encoding
     out.check
     out
   end
@@ -669,8 +669,10 @@ end
 
 class Iconv
   def self.easy_decode target, orig_charset, text
-    text = text.dup
-    text.force_encoding Encoding::BINARY
+    if text.respond_to? :force_encoding
+      text = text.dup
+      text.force_encoding Encoding::BINARY
+    end
     charset = case orig_charset
       when /UTF[-_ ]?8/i then "utf-8"
       when /(iso[-_ ])?latin[-_ ]?1$/i then "ISO-8859-1"
