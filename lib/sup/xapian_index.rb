@@ -525,6 +525,9 @@ EOS
       m.date
     end
 
+    # far away dates can't be marshalled
+    entry[:date] = truncated_date
+
     # Date value for range queries
     date_value = begin
       Xapian.sortable_serialise truncated_date.to_i
