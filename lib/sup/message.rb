@@ -32,6 +32,7 @@ class Message
   MAX_SIG_DISTANCE = 15 # lines from the end
   DEFAULT_SUBJECT = ""
   DEFAULT_SENDER = "(missing sender)"
+  MAX_HEADER_VALUE_SIZE = 4096
 
   attr_reader :id, :date, :from, :subj, :refs, :replytos, :to, :source,
               :cc, :bcc, :labels, :attachments, :list_address, :recipient_email, :replyto,
@@ -62,6 +63,7 @@ class Message
 
   def decode_header_field v
     return unless v
+    return unless v.bytesize < MAX_HEADER_VALUE_SIZE # avoid regex blowup on spam
     v = Iconv.easy_decode $encoding, 'ASCII', v
     v = Rfc2047.decode_to $encoding, v
     v.check
