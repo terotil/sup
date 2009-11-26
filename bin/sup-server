@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+
+require 'uri'
+require 'rubygems'
+require 'trollop'
+require "sup"
+
+opts = Trollop::options do
+  version "sup-server (sup #{Redwood::VERSION})"
+  banner <<EOS
+Usage:
+  sup-server [options]
+EOS
+	text <<EOS
+
+Other options:
+EOS
+  opt :verbose, "Increase verbosity."
+  opt :version, "Show version information", :short => :none
+end
+
+Redwood::start
+index = Redwood::Index.init
+
+index.lock_interactively or exit
+begin
+  index.load
+
+	index.save
+rescue Exception => e
+  File.open("sup-exception-log.txt", "w") { |f| f.puts e.backtrace }
+  raise
+ensure
+  Redwood::finish
+  index.unlock
+end
