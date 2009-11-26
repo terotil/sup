@@ -11,11 +11,11 @@ class Person
     name.check if name
 
     @name = if name
-      name = name.strip.gsub(/[ \t\r\n]+/, " ")
+      name = name.strip.gsub(/\s+/, " ")
       name =~ /^(['"]\s*)(.*?)(\s*["'])$/ ? $2 : name
     end
 
-    @email = email.strip.gsub(/[ \t\r\n]+/, " ").downcase
+    @email = email.strip.gsub(/\s+/, " ").downcase
   end
 
   def to_s; "#@name <#@email>" end
