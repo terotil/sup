@@ -554,6 +554,8 @@ EOS
     doc.add_value DATE_VALUENO, date_value
     check_entry entry
     doc.data = Marshal.dump entry
+    new_entry = Marshal.load doc.data
+    check_entry new_entry
 
     @xapian.replace_document docid, doc
   end
