@@ -302,9 +302,9 @@ class String
   class CheckError < ArgumentError; end
   def check
     begin
-      fail "unexpected encoding #{encoding}" unless encoding == Encoding::UTF_8
+      fail "unexpected encoding #{encoding}" if respond_to?(:encoding) && encoding != Encoding::UTF_8
       scan //
-      fail "invalid encoding" unless valid_encoding?
+      fail "invalid encoding" if respond_to?(:valid_encoding) && !valid_encoding?
     rescue
       raise CheckError.new($!.message)
     end
