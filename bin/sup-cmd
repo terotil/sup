@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'trollop'
+require 'sup/protocol'
+require 'pp'
+include Redwood
+
+c = Connection.tcp 'localhost'
+c.write :message_summary, '6E8631AD.30501@lig.net'
+pp c.read

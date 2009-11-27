@@ -5,6 +5,7 @@ require 'thread'
 require 'fileutils'
 require 'gettext'
 require 'curses'
+require 'bert'
 begin
   require 'fastthread'
 rescue LoadError
@@ -260,6 +261,7 @@ include Redwood::LogsStuff
     $encoding = "UTF-8"
   end
 
+require 'sup/protocol'
 require "sup/buffer"
 require "sup/keymap"
 require "sup/mode"

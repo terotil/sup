@@ -11,7 +11,7 @@ opts = Trollop::options do
 Usage:
   sup-server [options]
 EOS
-	text <<EOS
+  text <<EOS
 
 Other options:
 EOS
@@ -22,11 +22,36 @@ end
 Redwood::start
 index = Redwood::Index.init
 
+def service s
+  begin
+    c = Redwood::Connection.new s
+    while (x = c.read)
+      p x
+      type, *args = *x
+      case type
+      when :message_summary
+        e = Redwood::Index.get_entry args[0]
+        e[:labels] = e[:labels].to_a
+        c.write e
+      else
+        warn "invalid message type #{type}"
+      end
+    end
+  ensure
+    s.close
+  end
+end
+
 index.lock_interactively or exit
 begin
   index.load
 
-	index.save
+  srv = TCPServer.new 'localhost', Redwood::Protocol::DEFAULT_PORT
+  while (s = srv.accept)
+    service s
+  end
+
+  index.save
 rescue Exception => e
   File.open("sup-exception-log.txt", "w") { |f| f.puts e.backtrace }
   raise
