@@ -24,15 +24,36 @@ index = Redwood::Index.init
 
 def service s
   begin
-    c = Redwood::Connection.new s
+    index = Redwood::Index
+    c = Redwood::Protocol.new s
     while (x = c.read)
-      p x
-      type, *args = *x
+      type, hash, = *x
+      tag = hash[:tag]
+      puts "#{type}: #{hash.map { |k,v| "#{k}=#{v.inspect}" } * ', '}"
       case type
-      when :message_summary
-        e = Redwood::Index.get_entry args[0]
-        e[:labels] = e[:labels].to_a
-        c.write e
+      when :query
+        q = index.parse_query hash[:query]
+        fields = hash[:fields] || [:message_id, :subject]
+        offset = hash[:offset] || 0
+        limit = hash[:limit]
+        i = 0
+        index.each_id q do |msgid|
+          e = Redwood::Index.get_entry msgid
+          e[:labels] = e[:labels].to_a
+          e.reject! { |k,v| !fields.member? k }
+          c.write :document, :tag => tag, :document => e
+          i += 1
+          break if limit and i >= limit
+        end
+        c.write :done, :tag => tag
+      when :count
+        q = index.parse_query hash[:query]
+        count = index.num_results_for q
+        c.write :integer, :tag => tag, :count => count
+      when :modify
+      when :add
+      when :stream
+      when :cancel
       else
         warn "invalid message type #{type}"
       end

@@ -5,6 +5,18 @@ require 'sup/protocol'
 require 'pp'
 include Redwood
 
-c = Connection.tcp 'localhost'
-c.write :message_summary, '6E8631AD.30501@lig.net'
+c = Protocol.tcp 'localhost'
+
+c.write :count,
+        :query => ARGV.first,
+        :tag => 2
 pp c.read
+
+c.write :query,
+        :query => ARGV.first,
+        :limit => 3,
+        :fields => [:from, :subject],
+        :tag => 1
+while ((x = c.read) && x.first != :done)
+  pp x
+end
