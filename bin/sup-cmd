@@ -5,7 +5,7 @@ require 'sup/protocol'
 require 'pp'
 include Redwood
 
-c = Protocol.tcp 'localhost'
+c = Wire.tcp 'localhost'
 
 c.write :count,
         :query => ARGV.first,

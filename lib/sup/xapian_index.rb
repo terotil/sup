@@ -301,7 +301,7 @@ EOS
     query
   end
 
-  private
+  #private
 
   # Stemmed
   NORMAL_PREFIX = {

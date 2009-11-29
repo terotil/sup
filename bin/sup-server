@@ -4,6 +4,7 @@ require 'uri'
 require 'rubygems'
 require 'trollop'
 require "sup"
+require "sup/server"
 
 opts = Trollop::options do
   version "sup-server (sup #{Redwood::VERSION})"
@@ -22,54 +23,14 @@ end
 Redwood::start
 index = Redwood::Index.init
 
-def service s
-  begin
-    index = Redwood::Index
-    c = Redwood::Protocol.new s
-    while (x = c.read)
-      type, hash, = *x
-      tag = hash[:tag]
-      puts "#{type}: #{hash.map { |k,v| "#{k}=#{v.inspect}" } * ', '}"
-      case type
-      when :query
-        q = index.parse_query hash[:query]
-        fields = hash[:fields] || [:message_id, :subject]
-        offset = hash[:offset] || 0
-        limit = hash[:limit]
-        i = 0
-        index.each_id q do |msgid|
-          e = Redwood::Index.get_entry msgid
-          e[:labels] = e[:labels].to_a
-          e.reject! { |k,v| !fields.member? k }
-          c.write :document, :tag => tag, :document => e
-          i += 1
-          break if limit and i >= limit
-        end
-        c.write :done, :tag => tag
-      when :count
-        q = index.parse_query hash[:query]
-        count = index.num_results_for q
-        c.write :integer, :tag => tag, :count => count
-      when :modify
-      when :add
-      when :stream
-      when :cancel
-      else
-        warn "invalid message type #{type}"
-      end
-    end
-  ensure
-    s.close
-  end
-end
-
 index.lock_interactively or exit
 begin
   index.load
 
-  srv = TCPServer.new 'localhost', Redwood::Protocol::DEFAULT_PORT
+  server = Redwood::Server.new index
+  srv = TCPServer.new 'localhost', Redwood::Wire::DEFAULT_TCP_PORT
   while (s = srv.accept)
-    service s
+    server.service Redwood::Wire.new(s)
   end
 
   index.save

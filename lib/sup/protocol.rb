@@ -3,14 +3,14 @@ require 'bert'
 
 module Redwood
 
-class Protocol
-	DEFAULT_PORT = 2734
+class Wire
+	DEFAULT_TCP_PORT = 2734
 
 	def initialize s
 		@s = s
 	end
 
-	def self.tcp hostname, port=DEFAULT_PORT
+	def self.tcp hostname, port=DEFAULT_TCP_PORT
 		new TCPSocket.new(hostname, port)
 	end
 
@@ -24,6 +24,10 @@ class Protocol
 		len = lenheader.unpack('N')[0]
 		return unless bert = @s.read(len)
 		BERT.decode bert
+	end
+
+	def close
+		@s.close
 	end
 end
 
