@@ -25,11 +25,11 @@ class Server::Client
       while (x = wire.read)
         type, args, = *x
         puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}"
-        method_name = :"req_#{type}"
+        method_name = :"request_#{type}"
         if respond_to? method_name
           send method_name, args
         else
-          warn "invalid message type #{type}"
+          reply_error :tag => args[:tag], :type => :uknown_request, :message => "Unknown request"
         end
       end
     ensure
@@ -37,7 +37,28 @@ class Server::Client
     end
   end
 
-  def req_query args
+  ## Requests
+  ##
+  ## There may be zero or more replies to a request. Multiple requests may be
+  ## issued concurrently. <tag> is an opaque object returned in all replies to
+  ## the request.
+
+  # Query request
+  #
+  # Send a Message reply for each hit on <query>. <offset> and <limit>
+	# influence which results are returned.
+  #
+  # Parameters
+  # tag: opaque object
+  # query: Xapian query string
+  # offset: skip this many messages
+  # limit: return at most this many messages
+	# raw: include the raw message text
+  #
+  # Responses
+  # multiple Message
+  # one Done after all Messages
+  def request_query args
     q = server.index.parse_query args[:query]
     fields = args[:fields]
     offset = args[:offset] || 0
@@ -48,29 +69,116 @@ class Server::Client
       next unless i > offset
       e = server.index.get_entry msgid
       e[:labels] = e[:labels].to_a
-      e.reject! { |k,v| !fields.member? k } if fields
-      wire.write :document, :tag => args[:tag], :document => e
-      break if limit and i >= limit
+			raw = args[:raw] && server.index.build_message(msgid).raw_message
+      reply_message :tag => args[:tag], :message => e, :raw => raw
+      break if limit and i >= (offset+limit)
     end
-    wire.write :done, :tag => args[:tag]
+    reply_done :tag => args[:tag]
   end
 
-  def req_count args
+  # Count request
+  #
+  # Send a count reply with the number of hits for <query>.
+  #
+  # Parameters
+  # tag: opaque object
+  # query: Xapian query string
+  #
+  # Responses
+  # one Count
+  def request_count args
     q = server.index.parse_query args[:query]
     count = server.index.num_results_for q
-    wire.write :count, :tag => args[:tag], :count => count
+    reply_count :tag => args[:tag], :count => count
   end
 
-  def req_modify args
+  # Label request
+  #
+  # Modify the labels on all messages matching <query>.
+  #
+  # Parameters
+  # tag: opaque object
+  # query: Xapian query string
+  # add: labels to add
+  # remove: labels to remove
+  #
+  # Responses
+  # one Done
+  def request_label args
+    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
   end
 
-  def req_add args
+  # Add request
+  #
+	# Add a message to the database. <raw> is the normal RFC 2822 message text.
+  #
+  # Parameters
+  # tag: opaque object
+	# raw: message data
+  #
+  # Responses
+  # one Done
+  def request_add args
+    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
   end
 
-  def req_stream args
+  # Stream request
+  #
+  # Parameters
+  # tag: opaque object
+  # query: Xapian query string
+  #
+  # Responses
+  # multiple Message
+  def request_stream args
+    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
   end
 
-  def req_cancel args
+  # Cancel request
+  #
+  # Parameters
+  # tag: opaque object
+  # target: tag of the request to cancel
+  #
+  # Responses
+  # one Done
+  def request_cancel args
+    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
+  end
+
+  # Done reply
+  #
+  # Parameters
+  # tag: opaque object
+  def reply_done args
+    wire.write :done, args
+  end
+
+  # Message reply
+  #
+  # Parameters
+  # tag: opaque object
+  def reply_message args
+    wire.write :message, args
+  end
+
+  # Count reply
+  #
+  # Parameters
+  # tag: opaque object
+  # count: number of messages matched
+  def reply_count args
+    wire.write :count, args
+  end
+
+  # Error reply
+  #
+  # Parameters
+  # tag: opaque object
+  # type: symbol
+  # message: string
+  def reply_error args
+    wire.write :error, args
   end
 end
 

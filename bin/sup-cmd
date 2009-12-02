@@ -5,18 +5,28 @@ require 'sup/protocol'
 require 'pp'
 include Redwood
 
+query = ARGV.first or fail "query argument required"
+
 c = Wire.tcp 'localhost'
 
 c.write :count,
-        :query => ARGV.first,
+        :query => query,
         :tag => 2
 pp c.read
 
 c.write :query,
-        :query => ARGV.first,
+        :query => query,
         :limit => 3,
-        :fields => [:from, :subject],
         :tag => 1
+while ((x = c.read) && x.first != :done)
+  pp x
+end
+
+c.write :query,
+        :query => query,
+        :limit => 1,
+        :tag => 1,
+				:raw => true
 while ((x = c.read) && x.first != :done)
   pp x
 end
