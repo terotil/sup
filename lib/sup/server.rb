@@ -46,14 +46,14 @@ class Server::Client
   # Query request
   #
   # Send a Message reply for each hit on <query>. <offset> and <limit>
-	# influence which results are returned.
+  # influence which results are returned.
   #
   # Parameters
   # tag: opaque object
   # query: Xapian query string
   # offset: skip this many messages
   # limit: return at most this many messages
-	# raw: include the raw message text
+  # raw: include the raw message text
   #
   # Responses
   # multiple Message
@@ -69,7 +69,7 @@ class Server::Client
       next unless i > offset
       e = server.index.get_entry msgid
       e[:labels] = e[:labels].to_a
-			raw = args[:raw] && server.index.build_message(msgid).raw_message
+      raw = args[:raw] && server.index.build_message(msgid).raw_message
       reply_message :tag => args[:tag], :message => e, :raw => raw
       break if limit and i >= (offset+limit)
     end
@@ -110,11 +110,11 @@ class Server::Client
 
   # Add request
   #
-	# Add a message to the database. <raw> is the normal RFC 2822 message text.
+  # Add a message to the database. <raw> is the normal RFC 2822 message text.
   #
   # Parameters
   # tag: opaque object
-	# raw: message data
+  # raw: message data
   #
   # Responses
   # one Done
