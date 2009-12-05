@@ -5,6 +5,7 @@ require 'rubygems'
 require 'trollop'
 require "sup"
 require "sup/server"
+require "sup/storage"
 
 opts = Trollop::options do
   version "sup-server (sup #{Redwood::VERSION})"
@@ -23,11 +24,14 @@ end
 Redwood::start
 index = Redwood::Index.init
 
+store_filename = 'storage'
+store = Redwood::Storage.new store_filename
+
 index.lock_interactively or exit
 begin
   index.load
 
-  server = Redwood::Server.new index
+  server = Redwood::Server.new index, store
   srv = TCPServer.new 'localhost', Redwood::Wire::DEFAULT_TCP_PORT
   while (s = srv.accept)
     server.service Redwood::Wire.new(s)

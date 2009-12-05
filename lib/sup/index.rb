@@ -23,7 +23,7 @@ class BaseIndex
     def method_missing m; @h[m.to_s] end
   end
 
-  include Singleton
+  #include Singleton
 
   def initialize dir=BASE_DIR
     @dir = dir

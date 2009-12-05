@@ -1,14 +1,21 @@
 module Redwood
 
 class Server
-  attr_reader :index
+  attr_reader :index, :store, :source
 
-  def initialize index
+  def initialize index, store
     @index = index
+    @store = store
+    @source = StorageSource.new @store
+  end
+
+  def client w
+    Client.new(self, w)
   end
 
   def service w
-    Client.new(self, w).run
+    c = client(w)
+    while c.serve; end
   end
 end
 
@@ -20,21 +27,17 @@ class Server::Client
     @wire = wire
   end
 
-  def run
-    begin
-      while (x = wire.read)
-        type, args, = *x
-        puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}"
-        method_name = :"request_#{type}"
-        if respond_to? method_name
-          send method_name, args
-        else
-          reply_error :tag => args[:tag], :type => :uknown_request, :message => "Unknown request"
-        end
-      end
-    ensure
-      wire.close
+  def serve
+    x = wire.read or return false
+    type, args, = *x
+    puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}"
+    method_name = :"request_#{type}"
+    if respond_to? method_name
+      send method_name, args
+    else
+      reply_error :tag => args[:tag], :type => :uknown_request, :message => "Unknown request"
     end
+    true
   end
 
   ## Requests
@@ -119,7 +122,12 @@ class Server::Client
   # Responses
   # one Done
   def request_add args
-    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
+    raw = args[:raw]
+    addr = server.store.put raw
+    m = Message.new :source => server.source, :source_info => addr
+    m.load_from_source!
+    server.index.add_message m
+    reply_done :tag => args[:tag]
   end
 
   # Stream request
@@ -179,6 +187,33 @@ class Server::Client
   # message: string
   def reply_error args
     wire.write :error, args
+  end
+end
+
+class StorageSource < Source
+  def initialize store
+    @store = store
+  end
+
+  def load_header offset
+    parse_raw_email_header StringIO.new(raw_header(offset))
+  end
+
+  def load_message offset
+    RMail::Parser.read raw_message(offset)
+  end
+
+  def raw_header offset
+    io = StringIO.new raw_message(offset)
+    ret = ""
+    until io.eof? || (l = io.gets) =~ /^\r*$/
+      ret << l
+    end
+    ret
+  end
+
+  def raw_message offset
+    @store.get offset
   end
 end
 

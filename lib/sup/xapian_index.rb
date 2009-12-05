@@ -63,10 +63,6 @@ EOS
     synchronize { find_docid(id) && true }
   end
 
-  def source_for_id id
-    synchronize { get_entry(id)[:source_id] }
-  end
-
   def delete id
     synchronize { @xapian.delete_document mkterm(:msgid, id) }
   end
@@ -75,10 +71,7 @@ EOS
     entry = synchronize { get_entry id }
     return unless entry
 
-    source = SourceManager[entry[:source_id]]
-    raise "invalid source #{entry[:source_id]}" unless source
-
-    m = Message.new :source => source, :source_info => entry[:source_info],
+    m = Message.new :source => :none, :source_info => entry[:source_info],
                     :labels => entry[:labels], :snippet => entry[:snippet]
 
     mk_person = lambda { |x| Person.new(*x.reverse!) }
@@ -104,7 +97,6 @@ EOS
 
     d = {
       :message_id => m.id,
-      :source_id => m.source.id,
       :source_info => m.source_info,
       :date => (entry[:date] || m.date),
       :snippet => snippet,
@@ -321,7 +313,6 @@ EOS
     'email' => 'E',
     'date' => 'D',
     'label' => 'L',
-    'source_id' => 'I',
     'attachment_extension' => 'O',
     'msgid' => 'Q',
     'thread' => 'H',
@@ -419,7 +410,6 @@ EOS
     pos_terms << mkterm(:type, 'mail')
     pos_terms.concat(labels.map { |l| mkterm(:label,l) })
     pos_terms << opts[:qobj] if opts[:qobj]
-    pos_terms << mkterm(:source_id, opts[:source_id]) if opts[:source_id]
 
     if opts[:participants]
       participant_terms = opts[:participants].map { |p| mkterm(:email,:any, (Redwood::Person === p) ? p.email : p) }
@@ -462,7 +452,6 @@ EOS
     m.labels.each { |t| terms << mkterm(:label,t) }
     terms << mkterm(:type, 'mail')
     terms << mkterm(:msgid, m.id)
-    terms << mkterm(:source_id, m.source.id)
     m.attachments.each do |a|
       a =~ /\.(\w+)$/ or next
       t = mkterm(:attachment_extension, $1)
@@ -550,8 +539,6 @@ EOS
       when :any then PREFIX['email']
       else raise "Invalid email term type #{args[0]}"
       end + args[1].to_s.downcase
-    when :source_id
-      PREFIX['source_id'] + args[0].to_s.downcase
     when :attachment_extension
       PREFIX['attachment_extension'] + args[0].to_s.downcase
     when :msgid, :ref, :thread
