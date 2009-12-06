@@ -39,6 +39,8 @@ when "count"
   end
 when "label"
   Trollop.options do
+    opt :add_labels, "Labels to add", :default => ""
+    opt :remove_labels, "Labels to remove", :default => ""
   end
 when "add"
   Trollop.options do
@@ -76,6 +78,14 @@ when "count"
           :query => query
   type, args, = c.read
   puts args[:count]
+when "label"
+  query = ARGV.first or fail "query argument required"
+  c.write :label,
+          :query => query,
+          :add => cmd_opts[:add_labels].split(','),
+          :remove => cmd_opts[:remove_labels].split(',')
+  reply = c.read
+  fail "error labelling messages: #{reply.inspect}" unless reply.first == :done
 when "add"
   labels = cmd_opts[:labels].split(',')
   while raw = gets(nil)
