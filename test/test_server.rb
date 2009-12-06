@@ -112,14 +112,29 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
+  def test_stream
+    with_wires(2) do |w1, w2|
+    end
+  end
+
   def with_wire
-    w, srv_w = Redwood::Wire.pair
-    c = @server.client srv_w
-    w.send(:define_singleton_method, :serve) { c.serve }
-    w.send(:define_singleton_method, :serve!) { serve || fail('serve failed') }
-    yield w
-    w.close
-    srv_w.close
+    with_wires(1) { |w| yield w }
+  end
+
+  def with_wires n
+    wires = []
+    srv_wires = []
+    n.times do
+      w, srv_w = Redwood::Wire.pair
+      c = @server.client srv_w
+      w.send(:define_singleton_method, :serve) { c.serve }
+      w.send(:define_singleton_method, :serve!) { serve || fail('serve failed') }
+      wires << w
+      srv_wires << srv_w
+    end
+    yield *wires
+    wires.each { |w| w.close }
+    srv_wires.each { |srv_w| srv_w.close }
   end
 
   def expect resp, type, args={}
