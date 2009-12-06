@@ -3,6 +3,7 @@ require 'rubygems'
 require 'trollop'
 require 'sup/protocol'
 require 'pp'
+require 'yaml'
 include Redwood
 
 SUB_COMMANDS = %w(query count label add stream)
@@ -66,7 +67,8 @@ when "query"
           :limit => cmd_opts[:limit],
           :raw => cmd_opts[:raw]
   while ((x = c.read) && x.first != :done)
-    pp x
+    puts YAML.dump(x[1][:message])
+    puts YAML.dump(x[1][:raw]) if cmd_opts[:raw]
   end
 when "add"
   labels = cmd_opts[:labels].split(',')
@@ -74,7 +76,8 @@ when "add"
     c.write :add,
             :raw => raw,
             :labels => labels
-    pp c.read
+    reply = c.read
+    fail "error adding message: #{reply.inspect}" unless reply.first == :done
   end
 else
   fail "#{cmd} command unimplemented"
