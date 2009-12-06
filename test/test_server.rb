@@ -25,9 +25,9 @@ class TestServer < Test::Unit::TestCase
     puts "not cleaning up #{@path}" unless passed?
   end
 
-  def add_messages w, msgs=NormalMessages.msgs
+  def add_messages w, msgs=NormalMessages.msgs, labels=[]
     msgs.each do |msg|
-      w.write :add, :raw => msg
+      w.write :add, :raw => msg, :labels => labels
       w.serve!
       expect w.read, :done
     end
@@ -36,6 +36,20 @@ class TestServer < Test::Unit::TestCase
   def test_add
     with_wire do |w|
       add_messages w
+    end
+  end
+
+  def test_add_with_labels
+    with_wire do |w|
+      w.write :count, :query => 'label:foo'
+      w.serve!
+      expect w.read, :count, :count => 0
+
+      add_messages w, NormalMessages.msgs, [:foo]
+
+      w.write :count, :query => 'label:foo'
+      w.serve!
+      expect w.read, :count, :count => NormalMessages.msgs.size
     end
   end
 

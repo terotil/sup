@@ -129,13 +129,15 @@ class Server::Client
   # Parameters
   # tag: opaque object
   # raw: message data
+  # labels: initial labels
   #
   # Responses
   # one Done
   def request_add args
     raw = args[:raw]
+    labels = args[:labels] || []
     addr = server.store.put raw
-    m = Message.parse raw, :labels => [], :source_info => addr
+    m = Message.parse raw, :labels => labels, :source_info => addr
     server.index.add_message m
     reply_done :tag => args[:tag]
   end
