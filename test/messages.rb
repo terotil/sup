@@ -48,7 +48,7 @@ end
 
 module NormalMessages
   extend MessageMaker
-  msg :id => '1@example.com', :body => 'CountTestTerm'
-  msg :id => '2@example.com', :body => 'QueryTestTerm'
-  msg :id => '3@example.com', :body => 'QueryTestTerm'
+  msg :id => '1@example.com', :body => 'CountTestTerm QueryOrderingTestTerm', :date => Time.utc(2009, 10, 5)
+  msg :id => '2@example.com', :body => 'QueryTestTerm QueryOrderingTestTerm', :date => Time.utc(2009, 11, 22)
+  msg :id => '3@example.com', :body => 'QueryTestTerm QueryOrderingTestTerm', :date => Time.utc(2009, 9, 3)
 end

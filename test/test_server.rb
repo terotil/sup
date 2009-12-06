@@ -64,6 +64,25 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
+  def test_query_ordering
+    with_wire do |w|
+      add_messages w
+      w.write :query, :query => 'QueryOrderingTestTerm'
+      w.serve!
+      msgs = []
+      while (x = w.read)
+        type, args, = x
+        break if type == :done
+        expect x, :message
+        msgs << args[:message]
+      end
+
+      assert_operator msgs.size, :>, 1
+      dates = msgs.map { |m| m[:date] }
+      dates.inject { |b,v| assert_operator b, :>=, v; v }
+    end
+  end
+
   def test_label
     with_wire do |w|
       add_messages w
