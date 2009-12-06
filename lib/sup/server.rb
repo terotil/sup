@@ -68,13 +68,25 @@ class Server::Client
     offset = args[:offset] || 0
     limit = args[:limit]
     i = 0
-    server.index.each_id q do |msgid|
+    server.index.each_summary q do |summary|
       i += 1
       next unless i > offset
-      e = server.index.get_entry msgid
-      e[:labels] = e[:labels].to_a
-      raw = args[:raw] && server.index.build_message(msgid).raw_message
-      reply_message :tag => args[:tag], :message => e, :raw => raw
+      extract_person = lambda { |p| [p.email, p.name] }
+      extract_people = lambda { |ps| ps.map(&extract_person) }
+      message = {
+        :message_id => summary.id,
+        :date => summary.date,
+        :from => extract_person[summary.from],
+        :to => extract_people[summary.to],
+        :cc => extract_people[summary.cc],
+        :bcc => extract_people[summary.bcc],
+        :subject => summary.subj,
+        :refs => summary.refs,
+        :replytos => summary.replytos,
+        :labels => summary.labels.to_a,
+      }
+      raw = args[:raw] && server.store.get(summary.source_info)
+      reply_message :tag => args[:tag], :message => message, :raw => raw
       break if limit and i >= (offset+limit)
     end
     reply_done :tag => args[:tag]
@@ -112,8 +124,7 @@ class Server::Client
     q = server.index.parse_query args[:query]
     add = args[:add] || []
     remove = args[:remove] || []
-    server.index.each_id q do |msgid|
-      summary = server.index.build_message msgid
+    server.index.each_summary q do |summary|
       labels = summary.labels - remove + add
       m = Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
       server.index.update_message_state m
@@ -178,6 +189,15 @@ class Server::Client
   #
   # Parameters
   # tag: opaque object
+  # message:
+  #   message_id
+  #   date
+  #   from
+  #   to, cc, bcc: List of [email, name]
+  #   subject
+  #   refs
+  #   replytos
+  #   labels
   def reply_message args
     respond wire, :message, args
   end

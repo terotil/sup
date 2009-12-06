@@ -67,20 +67,6 @@ EOS
     synchronize { @xapian.delete_document mkterm(:msgid, id) }
   end
 
-  def build_message id
-    e = synchronize { get_entry id }
-    return unless e
-
-    mk_person = lambda { |x| Person.new(*x.reverse!) }
-
-    MessageSummary.new :id => e[:message_id], :from => mk_person[e[:from]],
-                       :date => e[:date], :subj => e[:subject],
-                       :to => e[:to].map(&mk_person), :cc => e[:cc].map(&mk_person),
-                       :bcc => e[:bcc].map(&mk_person),
-                       :refs => e[:refs], :replytos => e[:replytos],
-                       :labels => e[:labels], :source_info => e[:source_info]
-  end
-
   def add_message m; sync_message m end
   def update_message m; sync_message m end
   def update_message_state m; sync_message m end
@@ -122,16 +108,16 @@ EOS
     matchset.matches_estimated
   end
 
-  EACH_ID_PAGE = 100
-  def each_id query={}
+  EACH_SUMMARY_PAGE = 100
+  def each_summary query={}
     offset = 0
-    page = EACH_ID_PAGE
+    page = EACH_SUMMARY_PAGE
 
     xapian_query = build_xapian_query query
     while true
-      ids = run_query_ids xapian_query, offset, (offset+page)
-      ids.each { |id| yield id }
-      break if ids.size < page
+      rs = run_query_summaries xapian_query, offset, (offset+page)
+      rs.each { |r| yield r }
+      break if rs.size < page
       offset += page
     end
   end
@@ -393,9 +379,23 @@ EOS
     end
   end
 
-  def run_query_ids xapian_query, offset, limit
+  def run_query_summaries xapian_query, offset, limit
     matchset = run_query xapian_query, offset, limit
-    matchset.matches.map { |r| r.document.value MSGID_VALUENO }
+    matchset.matches.map { |r| build_summary r.document }
+  end
+
+  def build_summary doc
+    e = Marshal.load doc.data
+    return unless e
+
+    mk_person = lambda { |x| Person.new(*x.reverse!) }
+
+    MessageSummary.new :id => e[:message_id], :from => mk_person[e[:from]],
+                       :date => e[:date], :subj => e[:subject],
+                       :to => e[:to].map(&mk_person), :cc => e[:cc].map(&mk_person),
+                       :bcc => e[:bcc].map(&mk_person),
+                       :refs => e[:refs], :replytos => e[:replytos],
+                       :labels => e[:labels], :source_info => e[:source_info]
   end
 
   Q = Xapian::Query
