@@ -1,12 +1,11 @@
 module Redwood
 
 class Server
-  attr_reader :index, :store, :source
+  attr_reader :index, :store
 
   def initialize index, store
     @index = index
     @store = store
-    @source = StorageSource.new @store
   end
 
   def client w
@@ -238,33 +237,6 @@ class Server::Client
 
   def log_msg type, args
     puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}" if $VERBOSE
-  end
-end
-
-class StorageSource < Source
-  def initialize store
-    @store = store
-  end
-
-  def load_header offset
-    parse_raw_email_header StringIO.new(raw_header(offset))
-  end
-
-  def load_message offset
-    RMail::Parser.read raw_message(offset)
-  end
-
-  def raw_header offset
-    io = StringIO.new raw_message(offset)
-    ret = ""
-    until io.eof? || (l = io.gets) =~ /^\r*$/
-      ret << l
-    end
-    ret
-  end
-
-  def raw_message offset
-    @store.get offset
   end
 end
 
