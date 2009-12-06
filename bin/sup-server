@@ -34,7 +34,7 @@ begin
   server = Redwood::Server.new index, store
   srv = TCPServer.new 'localhost', Redwood::Wire::DEFAULT_TCP_PORT
   while (s = srv.accept)
-    server.service Redwood::Wire.new(s)
+    Thread.new { server.service Redwood::Wire.new(s) }
   end
 
   index.save

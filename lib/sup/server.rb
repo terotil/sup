@@ -18,6 +18,13 @@ class Server
       c = client(w)
       while c.serve; end
     rescue Errno::ECONNRESET, Errno::EPIPE
+    rescue Exception
+      puts "#{$!.class} exception in client thread"
+      puts $!.message
+      puts $!.backtrace
+      exit 1
+    ensure
+      w.close
     end
   end
 end
