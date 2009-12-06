@@ -22,6 +22,7 @@ class Storage
 	end
 
 	def put data
+		puts "storing #{data.inspect}" if $VERBOSE
 		fail 'closed' if @io.closed?
 		zdata = Zlib::Deflate.deflate data, LEVEL
 		zsize = zdata.bytesize

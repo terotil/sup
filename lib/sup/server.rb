@@ -30,7 +30,8 @@ class Server::Client
   def serve
     x = wire.read or return false
     type, args, = *x
-    puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}" if $VERBOSE
+    args ||= {}
+    log_msg type, args
     method_name = :"request_#{type}"
     if respond_to? method_name
       send method_name, args
@@ -159,7 +160,7 @@ class Server::Client
   # Parameters
   # tag: opaque object
   def reply_done args
-    wire.write :done, args
+    respond wire, :done, args
   end
 
   # Message reply
@@ -167,7 +168,7 @@ class Server::Client
   # Parameters
   # tag: opaque object
   def reply_message args
-    wire.write :message, args
+    respond wire, :message, args
   end
 
   # Count reply
@@ -176,7 +177,7 @@ class Server::Client
   # tag: opaque object
   # count: number of messages matched
   def reply_count args
-    wire.write :count, args
+    respond wire, :count, args
   end
 
   # Error reply
@@ -186,7 +187,16 @@ class Server::Client
   # type: symbol
   # message: string
   def reply_error args
-    wire.write :error, args
+    respond wire, :error, args
+  end
+
+  def respond wire, type, args={}
+    log_msg type, args
+    wire.write type, args
+  end
+
+  def log_msg type, args
+    puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}" if $VERBOSE
   end
 end
 
