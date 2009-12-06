@@ -70,6 +70,12 @@ when "query"
     puts YAML.dump(x[1][:message])
     puts YAML.dump(x[1][:raw]) if cmd_opts[:raw]
   end
+when "count"
+  query = ARGV.first or fail "query argument required"
+  c.write :count,
+          :query => query
+  type, args, = c.read
+  puts args[:count]
 when "add"
   labels = cmd_opts[:labels].split(',')
   while raw = gets(nil)
