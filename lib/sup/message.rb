@@ -32,31 +32,35 @@ class Message
   DEFAULT_SUBJECT = ""
   DEFAULT_SENDER = "(missing sender)"
 
-  attr_reader :id, :date, :from, :subj, :refs, :replytos, :to, :source,
+  attr_reader :id, :date, :from, :subj, :refs, :replytos, :to,
               :cc, :bcc, :labels, :attachments, :list_address, :recipient_email, :replyto,
-              :source_info, :list_subscribe, :list_unsubscribe
+              :source_info, :list_subscribe, :list_unsubscribe, :chunks
 
   bool_reader :dirty, :source_marked_read, :snippet_contains_encrypted_content
 
-  ## if you specify a :header, will use values from that. otherwise,
-  ## will try and load the header from the source.
-  def initialize opts
-    @source = opts[:source] or raise ArgumentError, "source can't be nil"
-    @source_info = opts[:source_info] or raise ArgumentError, "source_info can't be nil"
-    @snippet = opts[:snippet]
-    @snippet_contains_encrypted_content = false
-    @have_snippet = !(opts[:snippet].nil? || opts[:snippet].empty?)
-    @labels = Set.new(opts[:labels] || [])
+  def self.parse str, opts={}
+    new RMail::Parser.read(str), opts
+  end
+
+  def initialize rmail, opts={}
+    @attachments = []
     @dirty = false
     @encrypted = false
-    @chunks = nil
-    @attachments = []
-
-    ## we need to initialize this. see comments in parse_header as to
-    ## why.
+    @have_snippet = false
+    @labels = Set.new(opts[:labels] || [])
+    @list_address = nil
+    @list_subscribe = nil
+    @list_unsubscribe = nil
+    @recipient_email = nil
     @refs = []
+    @replyto = nil
+    @snippet = nil
+    @snippet_contains_encrypted_content = false
+    @source_info = opts[:source_info]
+    @source_marked_read = false
 
-    #parse_header(opts[:header] || @source.load_header(@source_info))
+    parse_header rmail.header
+    @chunks = message_to_chunks rmail
   end
 
   def parse_header header
@@ -100,7 +104,7 @@ class Message
       Time.now
     end
 
-    @subj = header.member?("subject") ? header["subject"].gsub(/\s+/, " ").gsub(/\s+$/, "") : DEFAULT_SUBJECT
+    @subj = header["subject"] ? header["subject"].gsub(/\s+/, " ").gsub(/\s+$/, "") : DEFAULT_SUBJECT
     @to = Person.from_address_list header["to"]
     @cc = Person.from_address_list header["cc"]
     @bcc = Person.from_address_list header["bcc"]
@@ -125,31 +129,6 @@ class Message
     @source_marked_read = header["status"] == "RO"
     @list_subscribe = header["list-subscribe"]
     @list_unsubscribe = header["list-unsubscribe"]
-  end
-
-  ## Expected index entry format:
-  ## :message_id, :subject => String
-  ## :date => Time
-  ## :refs, :replytos => Array of String
-  ## :from => Person
-  ## :to, :cc, :bcc => Array of Person
-  def load_from_index! entry
-    @id = entry[:message_id]
-    @from = entry[:from]
-    @date = entry[:date]
-    @subj = entry[:subject]
-    @to = entry[:to]
-    @cc = entry[:cc]
-    @bcc = entry[:bcc]
-    @refs = (@refs + entry[:refs]).uniq
-    @replytos = entry[:replytos]
-
-    @replyto = nil
-    @list_address = nil
-    @recipient_email = nil
-    @source_marked_read = false
-    @list_subscribe = nil
-    @list_unsubscribe = nil
   end
 
   def add_ref ref
@@ -213,39 +192,6 @@ class Message
     return if @labels == l
     @labels = l
     @dirty = true
-  end
-
-  def chunks
-    load_from_source!
-    @chunks
-  end
-
-  ## this is called when the message body needs to actually be loaded.
-  def load_from_source!
-    @chunks ||=
-      if @source.respond_to?(:has_errors?) && @source.has_errors?
-        [Chunk::Text.new(error_message(@source.error.message).split("\n"))]
-      else
-        begin
-          ## we need to re-read the header because it contains information
-          ## that we don't store in the index. actually i think it's just
-          ## the mailing list address (if any), so this is kinda overkill.
-          ## i could just store that in the index, but i think there might
-          ## be other things like that in the future, and i'd rather not
-          ## bloat the index.
-          ## actually, it's also the differentiation between to/cc/bcc,
-          ## so i will keep this.
-          parse_header @source.load_header(@source_info)
-          message_to_chunks @source.load_message(@source_info)
-        rescue SourceError, SocketError => e
-          warn "problem getting messages from #{@source}: #{e.message}"
-          ## we need force_to_top here otherwise this window will cover
-          ## up the error message one
-          @source.error ||= e
-          Redwood::report_broken_sources :force_to_top => true
-          [Chunk::Text.new(error_message(e.message).split("\n"))]
-        end
-      end
   end
 
   def error_message msg
@@ -336,7 +282,7 @@ EOS
     m
   end
 
-private
+#private
 
   ## here's where we handle decoding mime attachments. unfortunately
   ## but unsurprisingly, the world of mime attachments is a bit of a
@@ -593,6 +539,17 @@ private
       chunks << Chunk::Signature.new(chunk_lines) unless chunk_lines.empty?
     end
     chunks
+  end
+end
+
+class MessageSummary
+  FIELDS = [:id, :date, :from, :subj, :refs, :replytos, :to, :cc, :bcc, :labels, :source_info]
+  attr_reader *FIELDS
+
+  def initialize h
+    FIELDS.each do |k|
+      instance_variable_set(:"@#{k}", h[k] || fail("missing field #{k}"))
+    end
   end
 end
 

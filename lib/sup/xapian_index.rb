@@ -67,21 +67,18 @@ EOS
     synchronize { @xapian.delete_document mkterm(:msgid, id) }
   end
 
-  def build_message id, source=:none
-    entry = synchronize { get_entry id }
-    return unless entry
-
-    m = Message.new :source => source, :source_info => entry[:source_info],
-                    :labels => entry[:labels], :snippet => entry[:snippet]
+  def build_message id
+    e = synchronize { get_entry id }
+    return unless e
 
     mk_person = lambda { |x| Person.new(*x.reverse!) }
-    entry[:from] = mk_person[entry[:from]]
-    entry[:to].map!(&mk_person)
-    entry[:cc].map!(&mk_person)
-    entry[:bcc].map!(&mk_person)
 
-    m.load_from_index! entry
-    m
+    MessageSummary.new :id => e[:message_id], :from => mk_person[e[:from]],
+                       :date => e[:date], :subj => e[:subject],
+                       :to => e[:to].map(&mk_person), :cc => e[:cc].map(&mk_person),
+                       :bcc => e[:bcc].map(&mk_person),
+                       :refs => e[:refs], :replytos => e[:replytos],
+                       :labels => e[:labels], :source_info => e[:source_info]
   end
 
   def add_message m; sync_message m end

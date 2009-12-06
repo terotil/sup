@@ -113,9 +113,9 @@ class Server::Client
     add = args[:add] || []
     remove = args[:remove] || []
     server.index.each_id q do |msgid|
-      m = server.index.build_message msgid, server.source
-      m.labels -= remove
-      m.labels += add
+      summary = server.index.build_message msgid
+      labels = summary.labels - remove + add
+      m = Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
       server.index.update_message_state m
     end
 
@@ -135,8 +135,7 @@ class Server::Client
   def request_add args
     raw = args[:raw]
     addr = server.store.put raw
-    m = Message.new :source => server.source, :source_info => addr
-    m.load_from_source!
+    m = Message.parse raw, :labels => [], :source_info => addr
     server.index.add_message m
     reply_done :tag => args[:tag]
   end
