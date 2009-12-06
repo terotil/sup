@@ -30,7 +30,7 @@ class Server::Client
   def serve
     x = wire.read or return false
     type, args, = *x
-    puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}"
+    puts "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}" if $VERBOSE
     method_name = :"request_#{type}"
     if respond_to? method_name
       send method_name, args

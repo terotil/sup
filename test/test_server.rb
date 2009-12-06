@@ -42,8 +42,8 @@ EOM
   def add_messages w, msgs=MSGS
     msgs.each do |msg|
       w.write :add, :raw => msg
-      assert w.serve
-      assert_equal :done, w.read.first
+      w.serve!
+      expect w.read, :done
     end
   end
 
@@ -56,18 +56,14 @@ EOM
   def test_count
     with_wire do |w|
       w.write :count, :query => 'CountTestTerm'
-      assert w.serve
-      type, args, = w.read
-      assert_equal :count, type
-      assert_equal 0, args[:count]
+      w.serve!
+      expect w.read, :count, :count => 0
 
       add_messages w
 
       w.write :count, :query => 'CountTestTerm'
-      assert w.serve
-      type, args, = w.read
-      assert_equal :count, type
-      assert_equal 1, args[:count]
+      w.serve!
+      expect w.read, :count, :count => 1
    end
   end
 
@@ -75,8 +71,16 @@ EOM
     w, srv_w = Redwood::Wire.pair
     c = @server.client srv_w
     w.send(:define_singleton_method, :serve) { c.serve }
+    w.send(:define_singleton_method, :serve!) { serve || fail('serve failed') }
     yield w
     w.close
     srv_w.close
+  end
+
+  def expect resp, type, args={}
+    assert_equal type, resp[0]
+    args.each do |k,v|
+      assert_equal v, resp[1][k]
+    end
   end
 end
