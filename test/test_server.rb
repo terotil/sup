@@ -17,12 +17,12 @@ class TestServer < Test::Unit::TestCase
     @index = Redwood::XapianIndex.new @path
     @index.load_index
     @server = Redwood::Server.new @index, @store
-    @cleanup = true
   end
 
   def teardown
     @store.close if @store
-    FileUtils.rm_r @path if @cleanup
+    FileUtils.rm_r @path if passed?
+    puts "not cleaning up #{@path}" unless passed?
   end
 
   def add_messages w, msgs=NormalMessages.msgs
