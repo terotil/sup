@@ -14,8 +14,11 @@ class Server
   end
 
   def service w
-    c = client(w)
-    while c.serve; end
+    begin
+      c = client(w)
+      while c.serve; end
+    rescue Errno::ECONNRESET, Errno::EPIPE
+    end
   end
 end
 
