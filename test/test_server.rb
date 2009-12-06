@@ -7,23 +7,9 @@ require 'sup/server'
 require 'stringio'
 require 'tmpdir'
 require 'fileutils'
+require 'messages'
 
 class TestServer < Test::Unit::TestCase
-  MSGS = [
-<<EOM
-Date: Fri, 4 Dec 2009 21:57:00 -0800
-From: Fake Sender <fake_sender@example.invalid>
-To: Fake Receiver <fake_receiver@localhost>
-Subject: Re: Test message subject
-Message-ID: <20071209194819.GA25972@example.invalid>
-References: <E1J1Rvb-0006k2-CE@localhost.localdomain>
-In-Reply-To: <E1J1Rvb-0006k2-CE@localhost.localdomain>
-
-Test message!
-CountTestTerm
-EOM
-  ]
-
   def setup
     @path = Dir.mktmpdir
     ENV['SUP_BASE'] = @path
@@ -39,7 +25,7 @@ EOM
     FileUtils.rm_r @path if @cleanup
   end
 
-  def add_messages w, msgs=MSGS
+  def add_messages w, msgs=NormalMessages.msgs
     msgs.each do |msg|
       w.write :add, :raw => msg
       w.serve!
