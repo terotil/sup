@@ -22,12 +22,12 @@ EOS
 end
 
 Redwood::start
-index = Redwood::Index.init
+index = Redwood::Index.new
 
 store_filename = 'storage'
 store = Redwood::Storage.new store_filename
 
-index.lock_interactively or exit
+#index.lock_interactively or exit
 begin
   index.load
 
@@ -43,5 +43,5 @@ rescue Exception => e
   raise
 ensure
   Redwood::finish
-  index.unlock
+  #index.unlock
 end

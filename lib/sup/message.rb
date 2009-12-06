@@ -74,7 +74,7 @@ class Message
       mid = header["message-id"] =~ /<(.+?)>/ ? $1 : header["message-id"]
       sanitize_message_id mid
     else
-      id = "sup-faked-" + Digest::MD5.hexdigest(raw_header)
+      id = "sup-faked-" + Digest::MD5.hexdigest(Marshal.dump(header))
       from = header["from"]
       #debug "faking non-existent message-id for message from #{from}: #{id}"
       id

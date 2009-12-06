@@ -5,28 +5,77 @@ require 'sup/protocol'
 require 'pp'
 include Redwood
 
-query = ARGV.first or fail "query argument required"
+SUB_COMMANDS = %w(query count label add stream)
+global_opts = Trollop::options do
+  #version = "sup-cmd (sup #{Redwood::VERSION})"
+  banner <<EOS
+Interact with a running sup-server.
 
-c = Wire.tcp 'localhost'
+Usage:
+  sup-cmd [global options] command [options]
 
-c.write :count,
-        :query => query,
-        :tag => 2
-pp c.read
+  Valid commands: #{SUB_COMMANDS * ', '}
 
-c.write :query,
-        :query => query,
-        :limit => 3,
-        :tag => 1
-while ((x = c.read) && x.first != :done)
-  pp x
+  Global options:
+EOS
+
+  opt :host, "Host", :default => 'localhost', :short => 'H'
+  opt :port, "Port", :default => Wire::DEFAULT_TCP_PORT, :short => 'P'
+
+  stop_on SUB_COMMANDS
 end
 
-c.write :query,
-        :query => query,
-        :limit => 1,
-        :tag => 1,
-				:raw => true
-while ((x = c.read) && x.first != :done)
-  pp x
+cmd = ARGV.shift
+cmd_opts = case cmd
+when "query"
+  Trollop.options do
+    opt :offset, "Offset", :default => 0, :type => :int
+    opt :limit, "Limit", :type => :int
+    opt :raw, "Retrieve raw message text", :default => false
+  end
+when "count"
+  Trollop.options do
+  end
+when "label"
+  Trollop.options do
+  end
+when "add"
+  Trollop.options do
+    opt :labels, "Labels separated by commas", :default => ""
+  end
+when "stream"
+  Trollop.options do
+  end
+else
+  Trollop::die "unrecognized command #{cmd.inspect}"
+end
+
+begin
+  c = Wire.tcp global_opts[:host], global_opts[:port]
+rescue Errno::ECONNREFUSED
+  $stderr.puts "Error connecting to server: #{$!.message}"
+  exit 1
+end
+
+case cmd
+when "query"
+  query = ARGV.first or fail "query argument required"
+  c.write :query,
+          :query => query,
+          :offset => cmd_opts[:offset],
+          :limit => cmd_opts[:limit],
+          :raw => cmd_opts[:raw]
+  while ((x = c.read) && x.first != :done)
+    pp x
+  end
+when "add"
+  labels = cmd_opts[:labels].split(',')
+  while raw = gets(nil)
+    c.write :add,
+            :raw => raw,
+            :labels => labels
+    pp c.read
+  end
+else
+  fail "#{cmd} command unimplemented"
 end

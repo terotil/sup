@@ -1,4 +1,5 @@
 require 'socket'
+require 'stringio'
 require 'bert'
 
 module Redwood
