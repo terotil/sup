@@ -64,6 +64,21 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
+  def test_label
+    with_wire do |w|
+      add_messages w
+      w.write :count, :query => 'label:test'
+      w.serve!
+      expect w.read, :count, :count => 0
+      w.write :label, :query => 'QueryTestTerm', :add => [:test]
+      w.serve!
+      expect w.read, :done
+      w.write :count, :query => 'label:test'
+      w.serve!
+      expect w.read, :count, :count => 2
+    end
+  end
+
   def with_wire
     w, srv_w = Redwood::Wire.pair
     c = @server.client srv_w

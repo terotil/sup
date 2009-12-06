@@ -67,11 +67,11 @@ EOS
     synchronize { @xapian.delete_document mkterm(:msgid, id) }
   end
 
-  def build_message id
+  def build_message id, source=:none
     entry = synchronize { get_entry id }
     return unless entry
 
-    m = Message.new :source => :none, :source_info => entry[:source_info],
+    m = Message.new :source => source, :source_info => entry[:source_info],
                     :labels => entry[:labels], :snippet => entry[:snippet]
 
     mk_person = lambda { |x| Person.new(*x.reverse!) }
@@ -110,7 +110,7 @@ EOS
       :replytos => (entry[:replytos] || m.replytos),
     }
 
-    labels.each { |l| LabelManager << l }
+    #labels.each { |l| LabelManager << l }
 
     synchronize do
       index_message m, d, opts

@@ -109,7 +109,17 @@ class Server::Client
   # Responses
   # one Done
   def request_label args
-    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
+    q = server.index.parse_query args[:query]
+    add = args[:add] || []
+    remove = args[:remove] || []
+    server.index.each_id q do |msgid|
+      m = server.index.build_message msgid, server.source
+      m.labels -= remove
+      m.labels += add
+      server.index.update_message_state m
+    end
+
+    reply_done :tag => args[:tag]
   end
 
   # Add request
