@@ -49,4 +49,6 @@ end
 module NormalMessages
   extend MessageMaker
   msg :id => '1@example.com', :body => 'CountTestTerm'
+  msg :id => '2@example.com', :body => 'QueryTestTerm'
+  msg :id => '3@example.com', :body => 'QueryTestTerm'
 end

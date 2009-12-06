@@ -53,6 +53,17 @@ class TestServer < Test::Unit::TestCase
    end
   end
 
+  def test_query
+    with_wire do |w|
+      add_messages w
+      w.write :query, :query => 'QueryTestTerm'
+      w.serve!
+      expect w.read, :message
+      expect w.read, :message
+      expect w.read, :done
+    end
+  end
+
   def with_wire
     w, srv_w = Redwood::Wire.pair
     c = @server.client srv_w
