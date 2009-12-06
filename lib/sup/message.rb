@@ -34,7 +34,7 @@ class Message
 
   attr_reader :id, :date, :from, :subj, :refs, :replytos, :to,
               :cc, :bcc, :labels, :attachments, :list_address, :recipient_email, :replyto,
-              :source_info, :list_subscribe, :list_unsubscribe, :chunks
+              :source_info, :list_subscribe, :list_unsubscribe, :chunks, :snippet
 
   bool_reader :dirty, :source_marked_read, :snippet_contains_encrypted_content
 
@@ -52,7 +52,6 @@ class Message
     @list_subscribe = nil
     @list_unsubscribe = nil
     @recipient_email = nil
-    @refs = []
     @replyto = nil
     @snippet = nil
     @snippet_contains_encrypted_content = false
@@ -113,8 +112,7 @@ class Message
     ## have some extra refs set by the UI. (this happens when the user
     ## joins threads manually). so we will merge the current refs values
     ## in here.
-    refs = (header["references"] || "").scan(/<(.+?)>/).map { |x| sanitize_message_id x.first }
-    @refs = (@refs + refs).uniq
+    @refs = (header["references"] || "").scan(/<(.+?)>/).map { |x| sanitize_message_id x.first }
     @replytos = (header["in-reply-to"] || "").scan(/<(.+?)>/).map { |x| sanitize_message_id x.first }
 
     @replyto = Person.from_address header["reply-to"]
@@ -131,22 +129,7 @@ class Message
     @list_unsubscribe = header["list-unsubscribe"]
   end
 
-  def add_ref ref
-    @refs << ref
-    @dirty = true
-  end
-
-  def remove_ref ref
-    @dirty = true if @refs.delete ref
-  end
-
-  attr_reader :snippet
   def is_list_message?; !@list_address.nil?; end
-  def is_draft?; @source.is_a? DraftLoader; end
-  def draft_filename
-    raise "not a draft" unless is_draft?
-    @source.fn_for_offset @source_info
-  end
 
   ## sanitize message ids by removing spaces and non-ascii characters.
   ## also, truncate to 255 characters. all these steps are necessary
@@ -160,13 +143,6 @@ class Message
   ## an alternative would be to SHA1 or MD5 all message ids on a regular basis.
   ## don't tempt me.
   def sanitize_message_id mid; mid.gsub(/(\s|[^\000-\177])+/, "")[0..254] end
-
-  def save_state index
-    return unless @dirty
-    index.update_message_state self
-    @dirty = false
-    true
-  end
 
   def has_label? t; @labels.member? t; end
   def add_label l
@@ -192,50 +168,6 @@ class Message
     return if @labels == l
     @labels = l
     @dirty = true
-  end
-
-  def error_message msg
-    <<EOS
-#@snippet...
-
-***********************************************************************
- An error occurred while loading this message. It is possible that
- the source has changed, or (in the case of remote sources) is down.
- You can check the log for errors, though hopefully an error window
- should have popped up at some point.
-
- The message location was:
- #@source##@source_info
-***********************************************************************
-
-The error message was:
-  #{msg}
-EOS
-  end
-
-  ## wrap any source methods that might throw sourceerrors
-  def with_source_errors_handled
-    begin
-      yield
-    rescue SourceError => e
-      warn "problem getting messages from #{@source}: #{e.message}"
-      @source.error ||= e
-      Redwood::report_broken_sources :force_to_top => true
-      error_message e.message
-    end
-  end
-
-  def raw_header
-    with_source_errors_handled { @source.raw_header @source_info }
-  end
-
-  def raw_message
-    with_source_errors_handled { @source.raw_message @source_info }
-  end
-
-  ## much faster than raw_message
-  def each_raw_message_line &b
-    with_source_errors_handled { @source.each_raw_message_line(@source_info, &b) }
   end
 
   ## returns all the content from a message that will be indexed
@@ -276,13 +208,7 @@ EOS
        "Subject: #{@subj}"]
   end
 
-  def self.build_from_source source, source_info
-    m = Message.new :source => source, :source_info => source_info
-    m.load_from_source!
-    m
-  end
-
-#private
+private
 
   ## here's where we handle decoding mime attachments. unfortunately
   ## but unsurprisingly, the world of mime attachments is a bit of a
