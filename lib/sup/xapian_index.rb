@@ -300,6 +300,7 @@ EOS
     'msgid' => 'Q',
     'thread' => 'H',
     'ref' => 'R',
+    'source_info' => 'I',
   }
 
   PREFIX = NORMAL_PREFIX.merge BOOLEAN_PREFIX
@@ -407,6 +408,7 @@ EOS
     pos_terms << mkterm(:type, 'mail')
     pos_terms.concat(labels.map { |l| mkterm(:label,l) })
     pos_terms << opts[:qobj] if opts[:qobj]
+    pos_terms << mkterm(:source_info, opts[:source_info]) if opts[:source_info]
 
     if opts[:participants]
       participant_terms = opts[:participants].map { |p| mkterm(:email,:any, (Redwood::Person === p) ? p.email : p) }
@@ -454,6 +456,7 @@ EOS
       t = mkterm(:attachment_extension, $1)
       terms << t
     end
+    terms << mkterm(:source_info, m.source_info)
 
     ## Thread membership
     children = term_docids(mkterm(:ref, m.id)).map { |docid| @xapian.document docid }
@@ -540,6 +543,8 @@ EOS
       PREFIX['attachment_extension'] + args[0].to_s.downcase
     when :msgid, :ref, :thread
       PREFIX[type.to_s] + args[0][0...(MAX_TERM_LENGTH-1)]
+    when :source_info
+      PREFIX['source_info'] + args[0].to_s
     else
       raise "Invalid term type #{type}"
     end
