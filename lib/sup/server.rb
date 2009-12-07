@@ -80,25 +80,29 @@ class Server::Client
     server.index.each_summary q do |summary|
       i += 1
       next unless i > offset
-      extract_person = lambda { |p| [p.email, p.name] }
-      extract_people = lambda { |ps| ps.map(&extract_person) }
-      message = {
-        :message_id => summary.id,
-        :date => summary.date,
-        :from => extract_person[summary.from],
-        :to => extract_people[summary.to],
-        :cc => extract_people[summary.cc],
-        :bcc => extract_people[summary.bcc],
-        :subject => summary.subj,
-        :refs => summary.refs,
-        :replytos => summary.replytos,
-        :labels => summary.labels.to_a,
-      }
+      message = message_from_summary summary
       raw = args[:raw] && server.store.get(summary.source_info)
       reply_message :tag => args[:tag], :message => message, :raw => raw
       break if limit and i >= (offset+limit)
     end
     reply_done :tag => args[:tag]
+  end
+
+  def message_from_summary summary
+    extract_person = lambda { |p| [p.email, p.name] }
+    extract_people = lambda { |ps| ps.map(&extract_person) }
+    {
+      :message_id => summary.id,
+      :date => summary.date,
+      :from => extract_person[summary.from],
+      :to => extract_people[summary.to],
+      :cc => extract_people[summary.cc],
+      :bcc => extract_people[summary.bcc],
+      :subject => summary.subj,
+      :refs => summary.refs,
+      :replytos => summary.replytos,
+      :labels => summary.labels.to_a,
+    }
   end
 
   # Count request
