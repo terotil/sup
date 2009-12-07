@@ -195,13 +195,10 @@ class Server::Client
     q = server.index.parse_query args[:query]
     queue = server.stream_subscribe
     while (addr = queue.deq)
-      rs = []
       q[:source_info] = addr
-      server.index.each_summary(q) { |r| rs << r }
-      fail unless rs.size == 1
-      r = rs.first
-      message = message_from_summary r
-      reply_message :tag => args[:tag], :message => message, :raw => nil
+      summary = server.index.each_summary(q).first or next
+      raw = args[:raw] && server.store.get(summary.source_info)
+      reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
     end
   end
 
