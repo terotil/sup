@@ -6,6 +6,7 @@ require 'trollop'
 require "sup"
 require "sup/server"
 require "sup/storage"
+require 'bert'
 
 opts = Trollop::options do
   version "sup-server (sup #{Redwood::VERSION})"
@@ -21,6 +22,9 @@ EOS
   opt :version, "Show version information", :short => :none
 end
 
+HOST = 'localhost'
+PORT = Redwood::Protocol::DEFAULT_TCP_PORT
+
 Redwood::start
 index = Redwood::Index.new
 
@@ -31,11 +35,9 @@ store = Redwood::Storage.new store_filename
 begin
   index.load
 
-  server = Redwood::Server.new index, store
-  srv = TCPServer.new 'localhost', Redwood::Wire::DEFAULT_TCP_PORT
-  while (s = srv.accept)
-    Thread.new { server.service Redwood::Wire.new(s) }
-  end
+  server = Redwood::Server.spawn index, store
+  listener = Redwood::Protocol::TCPListener.listener HOST, PORT
+  Redwood::Protocol::TCPListener.new server, listener
 
   index.save
 rescue Exception => e

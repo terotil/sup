@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 require 'rubygems'
+require 'revactor'
 require 'trollop'
 require 'sup/protocol'
 require 'pp'
@@ -21,7 +22,7 @@ Usage:
 EOS
 
   opt :host, "Host", :default => 'localhost', :short => 'H'
-  opt :port, "Port", :default => Wire::DEFAULT_TCP_PORT, :short => 'P'
+  opt :port, "Port", :default => Protocol::DEFAULT_TCP_PORT, :short => 'P'
 
   stop_on SUB_COMMANDS
 end
@@ -55,7 +56,7 @@ else
 end
 
 begin
-  c = Wire.tcp global_opts[:host], global_opts[:port]
+  c = Protocol.tcp global_opts[:host], global_opts[:port]
 rescue Errno::ECONNREFUSED
   $stderr.puts "Error connecting to server: #{$!.message}"
   exit 1
@@ -64,43 +65,43 @@ end
 case cmd
 when "query"
   query = ARGV.first or fail "query argument required"
-  c.write :query,
-          :query => query,
-          :offset => cmd_opts[:offset],
-          :limit => cmd_opts[:limit],
-          :raw => cmd_opts[:raw]
+  c.send :query,
+         :query => query,
+         :offset => cmd_opts[:offset],
+         :limit => cmd_opts[:limit],
+         :raw => cmd_opts[:raw]
   while ((x = c.read) && x.first != :done)
     puts YAML.dump(x[1][:message])
     puts YAML.dump(x[1][:raw]) if cmd_opts[:raw]
   end
 when "count"
   query = ARGV.first or fail "query argument required"
-  c.write :count,
-          :query => query
+  c.send :count,
+         :query => query
   type, args, = c.read
   puts args[:count]
 when "label"
   query = ARGV.first or fail "query argument required"
-  c.write :label,
-          :query => query,
-          :add => cmd_opts[:add_labels].split(','),
-          :remove => cmd_opts[:remove_labels].split(',')
+  c.send :label,
+         :query => query,
+         :add => cmd_opts[:add_labels].split(','),
+         :remove => cmd_opts[:remove_labels].split(',')
   reply = c.read
   fail "error labelling messages: #{reply.inspect}" unless reply.first == :done
 when "add"
   labels = cmd_opts[:labels].split(',')
   while raw = gets(nil)
-    c.write :add,
-            :raw => raw,
-            :labels => labels
+    c.send :add,
+           :raw => raw,
+           :labels => labels
     reply = c.read
     fail "error adding message: #{reply.inspect}" unless reply.first == :done
   end
 when "stream"
   query = ARGV.first or fail "query argument required"
-  c.write :stream,
-          :query => query,
-          :raw => cmd_opts[:raw]
+  c.send :stream,
+         :query => query,
+         :raw => cmd_opts[:raw]
   while (x = c.read)
     fail unless x.first == :message
     puts YAML.dump(x[1][:message])

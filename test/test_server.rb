@@ -16,10 +16,13 @@ class TestServer < Test::Unit::TestCase
     @store = Redwood::Storage.new File.join(@path, 'db')
     @index = Redwood::XapianIndex.new @path
     @index.load_index
-    @server = Redwood::Server.new @index, @store
+    @server = Redwood::Server.spawn @index, @store
+    @socket_path = File.join(@path, 'socket')
+    @listener = Redwood::Protocol::UnixListener.listen @server, @socket_path
   end
 
   def teardown
+    @listener << :die if @listener
     @store.close if @store
     FileUtils.rm_r @path if passed?
     puts "not cleaning up #{@path}" unless passed?
@@ -27,8 +30,7 @@ class TestServer < Test::Unit::TestCase
 
   def add_messages w, msgs=NormalMessages.msgs, labels=[]
     msgs.each do |msg|
-      w.write :add, :raw => msg, :labels => labels
-      w.serve!
+      w.send :add, :raw => msg, :labels => labels
       expect w.read, :done
     end
   end
@@ -41,28 +43,24 @@ class TestServer < Test::Unit::TestCase
 
   def test_add_with_labels
     with_wire do |w|
-      w.write :count, :query => 'label:foo'
-      w.serve!
+      w.send :count, :query => 'label:foo'
       expect w.read, :count, :count => 0
 
       add_messages w, NormalMessages.msgs, [:foo]
 
-      w.write :count, :query => 'label:foo'
-      w.serve!
+      w.send :count, :query => 'label:foo'
       expect w.read, :count, :count => NormalMessages.msgs.size
     end
   end
 
   def test_count
     with_wire do |w|
-      w.write :count, :query => 'CountTestTerm'
-      w.serve!
+      w.send :count, :query => 'CountTestTerm'
       expect w.read, :count, :count => 0
 
       add_messages w
 
-      w.write :count, :query => 'CountTestTerm'
-      w.serve!
+      w.send :count, :query => 'CountTestTerm'
       expect w.read, :count, :count => 1
    end
   end
@@ -70,8 +68,7 @@ class TestServer < Test::Unit::TestCase
   def test_query
     with_wire do |w|
       add_messages w
-      w.write :query, :query => 'QueryTestTerm'
-      w.serve!
+      w.send :query, :query => 'QueryTestTerm'
       expect w.read, :message
       expect w.read, :message
       expect w.read, :done
@@ -81,8 +78,7 @@ class TestServer < Test::Unit::TestCase
   def test_query_ordering
     with_wire do |w|
       add_messages w
-      w.write :query, :query => 'QueryOrderingTestTerm'
-      w.serve!
+      w.send :query, :query => 'QueryOrderingTestTerm'
       msgs = []
       while (x = w.read)
         type, args, = x
@@ -100,23 +96,20 @@ class TestServer < Test::Unit::TestCase
   def test_label
     with_wire do |w|
       add_messages w
-      w.write :count, :query => 'label:test'
-      w.serve!
+      w.send :count, :query => 'label:test'
       expect w.read, :count, :count => 0
-      w.write :label, :query => 'QueryTestTerm', :add => [:test]
-      w.serve!
+      w.send :label, :query => 'QueryTestTerm', :add => [:test]
       expect w.read, :done
-      w.write :count, :query => 'label:test'
-      w.serve!
+      w.send :count, :query => 'label:test'
       expect w.read, :count, :count => 2
     end
   end
 
+=begin
   def test_stream
     with_wires(2) do |w1, w2|
       resps = []
-      w1.write :stream, :query => 'type:mail'
-      t1 = ::Thread.new { w1.serve! }
+      w1.send :stream, :query => 'type:mail'
       t2 = ::Thread.new do
         while (x = w1.read)
           expect x, :message
@@ -127,13 +120,12 @@ class TestServer < Test::Unit::TestCase
       sleep 3
       w1.close
       w2.close
-      t1.kill
-      t1.join
       t2.kill
       t2.join
       assert_equal NormalMessages.msgs.size, resps.size
     end
   end
+=end
 
   def with_wire
     with_wires(1) { |w| yield w }
@@ -141,18 +133,11 @@ class TestServer < Test::Unit::TestCase
 
   def with_wires n
     wires = []
-    srv_wires = []
     n.times do
-      w, srv_w = Redwood::Wire.pair
-      c = @server.client srv_w
-      w.send(:define_singleton_method, :serve) { c.serve }
-      w.send(:define_singleton_method, :serve!) { serve || fail('serve failed') }
-      wires << w
-      srv_wires << srv_w
+      wires << Redwood::Protocol.unix(@socket_path)
     end
     yield *wires
     wires.each { |w| w.close }
-    srv_wires.each { |srv_w| srv_w.close }
   end
 
   def expect resp, type, args={}
