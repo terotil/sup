@@ -110,16 +110,22 @@ EOS
 
   EACH_SUMMARY_PAGE = 100
   def each_summary query={}
+    ret = block_given? ? nil : []
     offset = 0
     page = EACH_SUMMARY_PAGE
 
     xapian_query = build_xapian_query query
     while true
       rs = run_query_summaries xapian_query, offset, (offset+page)
-      rs.each { |r| yield r }
+      if block_given?
+        rs.each { |r| yield r }
+      else
+        ret.concat rs
+      end
       break if rs.size < page
       offset += page
     end
+    ret
   end
 
   def each_id_by_date query={}
