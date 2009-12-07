@@ -114,6 +114,24 @@ class TestServer < Test::Unit::TestCase
 
   def test_stream
     with_wires(2) do |w1, w2|
+      resps = []
+      w1.write :stream, :query => 'type:mail'
+      t1 = ::Thread.new { w1.serve! }
+      t2 = ::Thread.new do
+        while (x = w1.read)
+          expect x, :message
+          resps << x
+        end
+      end
+      add_messages w2
+      sleep 3
+      w1.close
+      w2.close
+      t1.kill
+      t1.join
+      t2.kill
+      t2.join
+      assert_equal NormalMessages.msgs.size, resps.size
     end
   end
 

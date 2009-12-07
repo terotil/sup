@@ -6,6 +6,8 @@ class Server
   def initialize index, store
     @index = index
     @store = store
+    @stream_lock = Mutex.new
+    @stream_subscribers = []
   end
 
   def client w
@@ -25,6 +27,20 @@ class Server
     ensure
       w.close
     end
+  end
+
+  def stream_subscribe
+    q = Queue.new
+    @stream_lock.synchronize { @stream_subscribers << q }
+    q
+  end
+
+  def stream_unsubscribe q
+    @stream_lock.synchronize { @stream_subscribers.delete q }
+  end
+
+  def stream_notify addr
+    @stream_lock.synchronize { @stream_subscribers.each { |q| q << addr } }
   end
 end
 
@@ -164,6 +180,7 @@ class Server::Client
     m = Message.parse raw, :labels => labels, :source_info => addr
     server.index.add_message m
     reply_done :tag => args[:tag]
+    server.stream_notify addr
   end
 
   # Stream request
@@ -175,7 +192,17 @@ class Server::Client
   # Responses
   # multiple Message
   def request_stream args
-    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
+    q = server.index.parse_query args[:query]
+    queue = server.stream_subscribe
+    while (addr = queue.deq)
+      rs = []
+      q[:source_info] = addr
+      server.index.each_summary(q) { |r| rs << r }
+      fail unless rs.size == 1
+      r = rs.first
+      message = message_from_summary r
+      reply_message :tag => args[:tag], :message => message, :raw => nil
+    end
   end
 
   # Cancel request
