@@ -9,8 +9,7 @@ class Server
   def initialize index, store
     @index = index
     @store = store
-    @stream_lock = Mutex.new
-    @stream_subscribers = []
+    @subscribers = []
     @actor = Actor.current
     run
   end
@@ -21,20 +20,11 @@ class Server
         filter.when(T[:client]) do |_,wire|
           ClientConnection.spawn self, wire
         end
+        filter.when(T[:subscribe]) { |_,q| @subscribers << q }
+        filter.when(T[:unsubscribe]) { |_,q| @subscribers.delete q }
+        filter.when(T[:publish]) { |_,m| @subscribers.each { |q| q << m } }
       end
     end
-  end
-
-  def stream_subscribe q
-    @stream_lock.synchronize { @stream_subscribers << q }
-  end
-
-  def stream_unsubscribe q
-    @stream_lock.synchronize { @stream_subscribers.delete q }
-  end
-
-  def stream_notify addr
-    @stream_lock.synchronize { @stream_subscribers.each { |q| q << T[:message, addr] } }
   end
 end
 
@@ -99,8 +89,14 @@ class RequestHandler
     @args = args
     @server = client.server
     @wire = client.wire
-    run
+    begin
+      run
+    ensure
+      self.ensure
+    end
   end
+
+  def ensure; end
 
   def message_from_summary summary
     extract_person = lambda { |p| [p.email, p.name] }
@@ -267,7 +263,7 @@ class AddHandler < RequestHandler
     m = Message.parse raw, :labels => labels, :source_info => addr
     server.index.add_message m
     reply_done :tag => args[:tag]
-    server.stream_notify addr
+    server.actor << T[:publish, T[:new_message, addr]]
   end
 end
 
@@ -282,11 +278,11 @@ end
 class StreamHandler < RequestHandler
   def run
     q = server.index.parse_query args[:query]
-    server.stream_subscribe Actor.current
+    server.actor << T[:subscribe, Actor.current]
     die = false
     while not die
       Actor.receive do |f|
-        f.when(T[:message]) do |_,addr|
+        f.when(T[:new_message]) do |_,addr|
           q[:source_info] = addr
           summary = server.index.each_summary(q).first or next
           raw = args[:raw] && server.store.get(summary.source_info)
@@ -296,6 +292,10 @@ class StreamHandler < RequestHandler
         f.when(Object) { |o| puts "unexpected #{o.inspect}" }
       end
     end
+  end
+
+  def ensure
+    server.actor << T[:unsubscribe, Actor.current]
   end
 end
 
