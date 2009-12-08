@@ -1,7 +1,7 @@
 require 'thread'
 require 'zlib'
 
-module Redwood
+module Redwood::Server
 
 class Storage
 	LEVEL = Zlib::BEST_SPEED

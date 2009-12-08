@@ -17,7 +17,7 @@ class TestStorage < Test::Unit::TestCase
   end
 
   def with_store fn='db', &b
-    store = Redwood::Storage.new File.join(@path, fn)
+    store = Redwood::Server::Storage.new File.join(@path, fn)
     ret = b.yield store
     store.close
     ret

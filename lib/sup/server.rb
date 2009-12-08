@@ -9,7 +9,9 @@ require 'rmail'
 DEBUG_ENCODING = true
 $encoding = "UTF-8"
 
-module Redwood
+module Redwood; end
+
+module Redwood::Server
   VERSION = "git"
 
   BASE_DIR   = ENV["SUP_SERVER_BASE"] || File.join(ENV["HOME"], ".sup-server")
@@ -26,8 +28,8 @@ require 'sup/util'
 require 'sup/server/config'
 require 'sup/hook'
 
-Redwood::Config.load
-Redwood::HookManager.init Redwood::HOOK_DIR
+Redwood::Server::Config.load
+Redwood::HookManager.init Redwood::Server::HOOK_DIR
 
 require 'sup/logger'
 Redwood::Logger.init.add_sink $stderr

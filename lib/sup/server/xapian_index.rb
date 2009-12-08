@@ -2,7 +2,7 @@
 require 'xapian'
 require 'set'
 
-module Redwood
+module Redwood::Server
 
 # This index implementation uses Xapian for searching and storage. It
 # tends to be slightly faster than Ferret for indexing and significantly faster
@@ -17,7 +17,7 @@ class XapianIndex < BaseIndex
   MIN_DATE = Time.at 0
   MAX_DATE = Time.at(2**31-1)
 
-  HookManager.register "custom-search", <<EOS
+  Redwood::HookManager.register "custom-search", <<EOS
 Executes before a string search is applied to the index,
 returning a new search string.
 Variables:
@@ -76,7 +76,7 @@ EOS
     m = Message.new :source => source, :source_info => entry[:source_info],
                     :labels => entry[:labels], :snippet => entry[:snippet]
 
-    mk_person = lambda { |x| Person.new(*x.reverse!) }
+    mk_person = lambda { |x| Redwood::Person.new(*x.reverse!) }
     entry[:from] = mk_person[entry[:from]]
     entry[:to].map!(&mk_person)
     entry[:cc].map!(&mk_person)
@@ -171,14 +171,16 @@ EOS
       m = b.call
       ([m.from]+m.to+m.cc+m.bcc).compact.each { |p| contacts << [p.name, p.email] }
     end
-    contacts.to_a.compact.map { |n,e| Person.new n, e }[0...num]
+    contacts.to_a.compact.map { |n,e| Redwood::Person.new n, e }[0...num]
   end
 
   # TODO share code with the Ferret index
+	# TODO move into client?
   def parse_query s
     query = {}
 
-    subs = HookManager.run("custom-search", :subs => s) || s
+    subs = Redwood::HookManager.run("custom-search", :subs => s) || s
+=begin
     subs = subs.gsub(/\b(to|from):(\S+)\b/) do
       field, name = $1, $2
       if(p = ContactManager.contact_for(name))
@@ -189,6 +191,7 @@ EOS
         [field, name]
       end.join(":")
     end
+=end
 
     ## if we see a label:deleted or a label:spam term anywhere in the query
     ## string, we set the extra load_spam or load_deleted options to true.
@@ -402,9 +405,9 @@ EOS
     e = Marshal.load doc.data
     return unless e
 
-    mk_person = lambda { |x| Person.new(*x.reverse!) }
+    mk_person = lambda { |x| Redwood::Person.new(*x.reverse!) }
 
-    MessageSummary.new :id => e[:message_id], :from => mk_person[e[:from]],
+    Redwood::MessageSummary.new :id => e[:message_id], :from => mk_person[e[:from]],
                        :date => e[:date], :subj => e[:subject],
                        :to => e[:to].map(&mk_person), :cc => e[:cc].map(&mk_person),
                        :bcc => e[:bcc].map(&mk_person),
@@ -615,14 +618,14 @@ class Xapian::Document
 
   def index_text text, prefix, weight=1
     term_generator = Xapian::TermGenerator.new
-    term_generator.stemmer = Xapian::Stem.new(Redwood::XapianIndex::STEM_LANGUAGE)
+    term_generator.stemmer = Xapian::Stem.new(Redwood::Server::XapianIndex::STEM_LANGUAGE)
     term_generator.document = self
     term_generator.index_text text, weight, prefix
   end
 
   alias old_add_term add_term
   def add_term term
-    if term.length <= Redwood::XapianIndex::MAX_TERM_LENGTH
+    if term.length <= Redwood::Server::XapianIndex::MAX_TERM_LENGTH
       old_add_term term
     else
       warn "dropping excessively long term #{term}"

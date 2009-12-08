@@ -11,10 +11,10 @@ rescue LoadError => e
   $have_chronic = false
 end
 
-module Redwood
+module Redwood::Server
 
 class BaseIndex
-  include InteractiveLock
+  include Redwood::InteractiveLock
 
   class LockError < StandardError
     def initialize h

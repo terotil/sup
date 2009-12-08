@@ -1,4 +1,4 @@
-module Redwood
+module Redwood::Server
 
 class Server
   extend Actorize

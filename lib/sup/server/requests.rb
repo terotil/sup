@@ -4,7 +4,7 @@
 ## issued concurrently. <tag> is an opaque object returned in all replies to
 ## the request.
 
-module Redwood
+module Redwood::Server
 
 class RequestHandler
   extend Actorize
@@ -162,7 +162,7 @@ class LabelHandler < RequestHandler
     remove = args[:remove] || []
     server.index.each_summary q do |summary|
       labels = summary.labels - remove + add
-      m = Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
+      m = Redwood::Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
       server.index.update_message_state m
     end
 
@@ -186,7 +186,7 @@ class AddHandler < RequestHandler
     raw = args[:raw]
     labels = args[:labels] || []
     addr = server.store.put raw
-    m = Message.parse raw, :labels => labels, :source_info => addr
+    m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
     server.index.add_message m
     reply_done :tag => args[:tag]
     server.actor << T[:publish, T[:new_message, addr]]

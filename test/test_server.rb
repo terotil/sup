@@ -12,10 +12,10 @@ class TestServer < Test::Unit::TestCase
   def setup
     @path = Dir.mktmpdir
     ENV['SUP_BASE'] = @path
-    @store = Redwood::Storage.new File.join(@path, 'db')
-    @index = Redwood::XapianIndex.new @path
+    @store = Redwood::Server::Storage.new File.join(@path, 'db')
+    @index = Redwood::Server::XapianIndex.new @path
     @index.load_index
-    @server = Redwood::Server.spawn @index, @store
+    @server = Redwood::Server::Server.spawn @index, @store
     @socket_path = File.join(@path, 'socket')
     @listener = Redwood::Protocol::UnixListener.listen @server, @socket_path
   end
