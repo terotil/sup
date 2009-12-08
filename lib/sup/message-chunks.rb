@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'tempfile'
 
 ## Here we define all the "chunks" that a message is parsed

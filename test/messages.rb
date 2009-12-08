@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 module MessageMaker
   Person = Redwood::Person
 
@@ -23,6 +25,7 @@ module MessageMaker
 
   def msg_raw raw
     @msgs ||= []
+    raw.force_encoding Encoding::ASCII_8BIT
     @msgs << raw
   end
 

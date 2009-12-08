@@ -1,3 +1,4 @@
+# encoding: utf-8
 require "sup/rfc2047"
 
 module Redwood

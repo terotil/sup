@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Curses
   COLOR_DEFAULT = -1
 end

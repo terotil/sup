@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Redwood
 
 ## Implements a single undo list for the Sup instance

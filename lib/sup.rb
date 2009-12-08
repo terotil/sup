@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'rubygems'
 require 'yaml'
 require 'zlib'
@@ -10,6 +11,8 @@ begin
   require 'fastthread'
 rescue LoadError
 end
+
+DEBUG_ENCODING = true
 
 class Object
   ## this is for debugging purposes because i keep calling #id on the

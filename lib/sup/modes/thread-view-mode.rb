@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Redwood
 
 class ThreadViewMode < LineCursorMode
@@ -149,14 +150,14 @@ EOS
   def show_header
     m = @message_lines[curpos] or return
     BufferManager.spawn_unless_exists("Full header for #{m.id}") do
-      TextMode.new m.raw_header
+      TextMode.new m.raw_header.ascii
     end
   end
 
   def show_message
     m = @message_lines[curpos] or return
     BufferManager.spawn_unless_exists("Raw message for #{m.id}") do
-      TextMode.new m.raw_message
+      TextMode.new m.raw_message.ascii
     end
   end
 

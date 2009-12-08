@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Redwood
 
 ## a fully-functional text field supporting completions, expansions,

@@ -1,3 +1,4 @@
+# encoding: utf-8
 ## Index interface, subclassed by Ferret indexer.
 
 require 'fileutils'

@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Redwood
 
 ## extends ScrollMode to have a line-based cursor.

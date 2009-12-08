@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'tempfile'
 require 'socket' # just for gethostname!
 require 'pathname'

@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'xapian'
 require 'set'
 
@@ -88,6 +89,24 @@ EOS
   def add_message m; sync_message m, true end
   def update_message m; sync_message m, true end
   def update_message_state m; sync_message m, false end
+
+  def debug_check_entry e
+    return unless DEBUG_ENCODING
+    begin
+      e[:message_id].check
+      e[:snippet].check if e[:snippet]
+      ([e[:from]] + e[:to] + e[:cc] + e[:bcc]).each do |email,name|
+        email.check if email
+        name.check if name
+      end
+      e[:subject].check if e[:subject]
+      (e[:refs] + e[:replytos]).each { |s| s.check }
+    rescue String::CheckError
+      puts "Invalid index entry:"
+      pp e
+      raise
+    end
+  end
 
   def num_results_for query={}
     xapian_query = build_xapian_query query
@@ -354,7 +373,9 @@ EOS
 
   def get_entry id
     return unless doc = find_doc(id)
-    Marshal.load doc.data
+    entry = Marshal.load doc.data
+    debug_check_entry entry
+    entry
   end
 
   def thread_killed? thread_id

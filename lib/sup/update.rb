@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Redwood
 
 ## Classic listener/broadcaster paradigm. Handles communication between various

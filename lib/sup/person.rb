@@ -1,3 +1,4 @@
+# encoding: utf-8
 module Redwood
 
 class Person
@@ -5,6 +6,9 @@ class Person
 
   def initialize name, email
     raise ArgumentError, "email can't be nil" unless email
+
+    email.debug_check
+    name.debug_check if name
 
     @name = if name
       name = name.strip.gsub(/\s+/, " ")

@@ -1,3 +1,4 @@
+# encoding: utf-8
 ## from: http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-talk/101949
 
 # $Id: rfc2047.rb,v 1.4 2003/04/18 20:55:56 sam Exp $

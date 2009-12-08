@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'time'
 
 module Redwood
@@ -31,6 +32,7 @@ class Message
   MAX_SIG_DISTANCE = 15 # lines from the end
   DEFAULT_SUBJECT = ""
   DEFAULT_SENDER = "(missing sender)"
+  MAX_HEADER_VALUE_SIZE = 4096
 
   attr_reader :id, :date, :from, :subj, :refs, :replytos, :to,
               :cc, :bcc, :labels, :attachments, :list_address, :recipient_email, :replyto,
@@ -62,13 +64,17 @@ class Message
     @chunks = message_to_chunks rmail
   end
 
-  def parse_header header
-    ## forcibly decode these headers from and to the current encoding,
-    ## which serves to strip out characters that aren't displayable
-    ## (and which would otherwise be screwing up the display)
-    %w(from to subject cc bcc).each do |f|
-      header[f] = Iconv.easy_decode($encoding, $encoding, header[f]) if header[f]
-    end
+  def decode_header_field v
+    return unless v
+    return unless v.size < MAX_HEADER_VALUE_SIZE # avoid regex blowup on spam
+    v = Iconv.easy_decode $encoding, 'ASCII', v
+    v = Rfc2047.decode_to $encoding, v
+    v.debug_check
+    v
+  end
+
+  def parse_header encoded_header
+    header = SavingHash.new { |k| decode_header_field encoded_header[k] }
 
     @id = if header["message-id"]
       mid = header["message-id"] =~ /<(.+?)>/ ? $1 : header["message-id"]
@@ -127,6 +133,7 @@ class Message
     @source_marked_read = header["status"] == "RO"
     @list_subscribe = header["list-subscribe"]
     @list_unsubscribe = header["list-unsubscribe"]
+    header.each { |k,v| v.debug_check if v }
   end
 
   def is_list_message?; !@list_address.nil?; end
@@ -291,6 +298,42 @@ private
     end
   end
 
+  # XXX replace with DummySource?
+  class PayloadSource
+    def initialize raw
+      @raw = raw
+    end
+
+    def load_header offset
+      Source.parse_raw_email_header StringIO.new(raw_header(offset))
+    end
+    
+    def load_message offset
+      RMail::Parser.read raw_message(offset)
+    end
+    
+    def raw_header offset
+      ret = ""
+      f = StringIO.new(@raw)
+      until f.eof? || (l = f.gets) =~ /^$/
+        ret += l
+      end
+      ret
+    end
+    
+    def raw_message offset
+      @raw
+    end
+    
+    def each_raw_message_line offset
+      ret = ""
+      f = StringIO.new(@raw)
+      until f.eof?
+        yield f.gets
+      end
+    end
+  end
+
   ## takes a RMail::Message, breaks it into Chunk:: classes.
   def message_to_chunks m, encrypted=false, sibling_types=[]
     if m.multipart?
@@ -310,20 +353,10 @@ private
       chunks
     elsif m.header.content_type && m.header.content_type.downcase == "message/rfc822"
       if m.body
-        payload = RMail::Parser.read(m.body)
-        from = payload.header.from.first ? payload.header.from.first.format : ""
-        to = payload.header.to.map { |p| p.format }.join(", ")
-        cc = payload.header.cc.map { |p| p.format }.join(", ")
-        subj = payload.header.subject
-        subj = subj ? Message.normalize_subj(payload.header.subject.gsub(/\s+/, " ").gsub(/\s+$/, "")) : subj
-        if Rfc2047.is_encoded? subj
-          subj = Rfc2047.decode_to $encoding, subj
-        end
-        msgdate = payload.header.date
-        from_person = from ? Person.from_address(from) : nil
-        to_people = to ? Person.from_address_list(to) : nil
-        cc_people = cc ? Person.from_address_list(cc) : nil
-        [Chunk::EnclosedMessage.new(from_person, to_people, cc_people, msgdate, subj)] + message_to_chunks(payload, encrypted)
+        payload_source = PayloadSource.new m.body
+        m2 = Message.new :source => payload_source, :source_info => 0
+        m2.load_from_source!
+        [Chunk::EnclosedMessage.new(m2.from, m2.to, m2.cc, m2.date, m2.subj)] + m2.chunks
       else
         debug "no body for message/rfc822 enclosure; skipping"
         []
