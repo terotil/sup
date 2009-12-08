@@ -25,6 +25,8 @@ module Ncurses
   def mutex; @mutex ||= Mutex.new; end
   def sync &b; mutex.synchronize(&b); end
 
+  ## magically, this stuff seems to work now. i could swear it didn't
+  ## before. hm.
   def nonblocking_getch
     ## INSANTIY
     ## it is NECESSARY to wrap Ncurses.getch in a select() otherwise all
@@ -77,7 +79,7 @@ class Buffer
   def content_height; @height - 1; end
   def content_width; @width; end
 
-  def resize rows, cols
+  def resize rows, cols 
     return if cols == @width && rows == @height
     @width = cols
     @height = rows
@@ -470,7 +472,7 @@ EOS
     end
   end
 
-  def ask_for_filename domain, question, default=nil
+  def ask_for_filename domain, question, default=nil, allow_directory=false
     answer = ask domain, question, default do |s|
       if s =~ /(~([^\s\/]*))/ # twiddle directory expansion
         full = $1
@@ -495,7 +497,7 @@ EOS
       answer =
         if answer.empty?
           spawn_modal "file browser", FileBrowserMode.new
-        elsif File.directory?(answer)
+        elsif File.directory?(answer) && !allow_directory
           spawn_modal "file browser", FileBrowserMode.new(answer)
         else
           File.expand_path answer
@@ -755,6 +757,7 @@ EOS
   end
 
 private
+
   def default_status_bar buf
     " [#{buf.mode.name}] #{buf.title}   #{buf.mode.status}"
   end
