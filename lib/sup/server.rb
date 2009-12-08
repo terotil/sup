@@ -171,22 +171,22 @@ class RequestHandler
   end
 end
 
+# Query request
+#
+# Send a Message reply for each hit on <query>. <offset> and <limit>
+# influence which results are returned.
+#
+# Parameters
+# tag: opaque object
+# query: Xapian query string
+# offset: skip this many messages
+# limit: return at most this many messages
+# raw: include the raw message text
+#
+# Responses
+# multiple Message
+# one Done after all Messages
 class QueryHandler < RequestHandler
-  # Query request
-  #
-  # Send a Message reply for each hit on <query>. <offset> and <limit>
-  # influence which results are returned.
-  #
-  # Parameters
-  # tag: opaque object
-  # query: Xapian query string
-  # offset: skip this many messages
-  # limit: return at most this many messages
-  # raw: include the raw message text
-  #
-  # Responses
-  # multiple Message
-  # one Done after all Messages
   def run
     q = server.index.parse_query args[:query]
     fields = args[:fields]
@@ -205,17 +205,17 @@ class QueryHandler < RequestHandler
   end
 end
 
+# Count request
+#
+# Send a count reply with the number of hits for <query>.
+#
+# Parameters
+# tag: opaque object
+# query: Xapian query string
+#
+# Responses
+# one Count
 class CountHandler < RequestHandler
-  # Count request
-  #
-  # Send a count reply with the number of hits for <query>.
-  #
-  # Parameters
-  # tag: opaque object
-  # query: Xapian query string
-  #
-  # Responses
-  # one Count
   def run
     q = server.index.parse_query args[:query]
     count = server.index.num_results_for q
@@ -223,19 +223,19 @@ class CountHandler < RequestHandler
   end
 end
 
+# Label request
+#
+# Modify the labels on all messages matching <query>.
+#
+# Parameters
+# tag: opaque object
+# query: Xapian query string
+# add: labels to add
+# remove: labels to remove
+#
+# Responses
+# one Done
 class LabelHandler < RequestHandler
-  # Label request
-  #
-  # Modify the labels on all messages matching <query>.
-  #
-  # Parameters
-  # tag: opaque object
-  # query: Xapian query string
-  # add: labels to add
-  # remove: labels to remove
-  #
-  # Responses
-  # one Done
   def run
     q = server.index.parse_query args[:query]
     add = args[:add] || []
@@ -250,18 +250,18 @@ class LabelHandler < RequestHandler
   end
 end
 
+# Add request
+#
+# Add a message to the database. <raw> is the normal RFC 2822 message text.
+#
+# Parameters
+# tag: opaque object
+# raw: message data
+# labels: initial labels
+#
+# Responses
+# one Done
 class AddHandler < RequestHandler
-  # Add request
-  #
-  # Add a message to the database. <raw> is the normal RFC 2822 message text.
-  #
-  # Parameters
-  # tag: opaque object
-  # raw: message data
-  # labels: initial labels
-  #
-  # Responses
-  # one Done
   def run
     raw = args[:raw]
     labels = args[:labels] || []
@@ -273,15 +273,15 @@ class AddHandler < RequestHandler
   end
 end
 
+# Stream request
+#
+# Parameters
+# tag: opaque object
+# query: Xapian query string
+#
+# Responses
+# multiple Message
 class StreamHandler < RequestHandler
-  # Stream request
-  #
-  # Parameters
-  # tag: opaque object
-  # query: Xapian query string
-  #
-  # Responses
-  # multiple Message
   def run
     q = server.index.parse_query args[:query]
     queue = server.stream_subscribe
@@ -294,15 +294,15 @@ class StreamHandler < RequestHandler
   end
 end
 
+# Cancel request
+#
+# Parameters
+# tag: opaque object
+# target: tag of the request to cancel
+#
+# Responses
+# one Done
 class CancelHandler < RequestHandler
-  # Cancel request
-  #
-  # Parameters
-  # tag: opaque object
-  # target: tag of the request to cancel
-  #
-  # Responses
-  # one Done
   def request_cancel args
     reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
   end
