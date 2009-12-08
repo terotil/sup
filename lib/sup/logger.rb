@@ -68,6 +68,10 @@ end
 ## include me to have top-level #debug, #info, etc. methods.
 module LogsStuff
   Logger::LEVELS.each { |l| define_method(l) { |s| Logger.instance.send(l, s) } }
+
+  def debug_msg type, args
+    debug "#{type}: #{args.map { |k,v| "#{k}=#{v.inspect}" } * ', '}"
+  end
 end
 
 end
