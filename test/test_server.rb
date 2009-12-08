@@ -105,27 +105,41 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
-=begin
-  def test_stream
-    with_wires(2) do |w1, w2|
-      resps = []
-      w1.send :stream, :query => 'type:mail'
-      t2 = ::Thread.new do
-        while (x = w1.read)
-          expect x, :message
-          resps << x
+  class Reader
+    extend Actorize
+
+    def initialize wire, a
+      die = false
+      wire.controller = Actor.current
+      wire.active = true
+      while not die
+        Actor.receive do |f|
+          f.when(T[Case::Any.new(:unix,:tcp)]) { |_,_,m| a << m }
+          f.when(:die) { die = true }
         end
       end
-      add_messages w2
-      sleep 3
-      w1.close
-      w2.close
-      t2.kill
-      t2.join
-      assert_equal NormalMessages.msgs.size, resps.size
     end
   end
-=end
+
+  def test_stream
+    with_wires(2) do |w1, w2|
+      a = []
+      w1.send :stream, :query => 'type:mail'
+      reader = Reader.spawn w1, a
+      add_messages w2
+      Actor.sleep 1
+      assert_equal NormalMessages.msgs.size, a.size
+      reader << :die
+    end
+  end
+
+  def test_multiple_accept
+    with_wires(2) do |w1,w2|
+      add_messages w1
+      w2.send :count, :query => 'type:mail'
+      expect w2.read, :count, :count => NormalMessages.msgs.size
+    end
+  end
 
   def with_wire
     with_wires(1) { |w| yield w }

@@ -25,10 +25,8 @@ class Server
     end
   end
 
-  def stream_subscribe
-    q = Queue.new
+  def stream_subscribe q
     @stream_lock.synchronize { @stream_subscribers << q }
-    q
   end
 
   def stream_unsubscribe q
@@ -36,7 +34,7 @@ class Server
   end
 
   def stream_notify addr
-    @stream_lock.synchronize { @stream_subscribers.each { |q| q << addr } }
+    @stream_lock.synchronize { @stream_subscribers.each { |q| q << T[:message, addr] } }
   end
 end
 
@@ -284,12 +282,19 @@ end
 class StreamHandler < RequestHandler
   def run
     q = server.index.parse_query args[:query]
-    queue = server.stream_subscribe
-    while (addr = queue.deq)
-      q[:source_info] = addr
-      summary = server.index.each_summary(q).first or next
-      raw = args[:raw] && server.store.get(summary.source_info)
-      reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
+    server.stream_subscribe Actor.current
+    die = false
+    while not die
+      Actor.receive do |f|
+        f.when(T[:message]) do |_,addr|
+          q[:source_info] = addr
+          summary = server.index.each_summary(q).first or next
+          raw = args[:raw] && server.store.get(summary.source_info)
+          reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
+        end
+        f.when(:die) { die = true }
+        f.when(Object) { |o| puts "unexpected #{o.inspect}" }
+      end
     end
   end
 end
