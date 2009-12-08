@@ -133,6 +133,27 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
+  def test_stream_cancel
+    msgs = NormalMessages.msgs
+    with_wires(2) do |w1, w2|
+      a = []
+      w1.send :stream, :query => 'type:mail', :tag => 42
+      reader = Reader.spawn w1, a
+
+      add_messages w2, [msgs[0]]
+      Actor.sleep 1
+      assert_equal 1, a.size
+
+      w2.send :cancel, :tag => 42
+
+      add_messages w2, [msgs[1]]
+      Actor.sleep 1
+      assert_equal 1, a.size
+
+      reader << :die
+    end
+  end
+
   def test_multiple_accept
     with_wires(2) do |w1,w2|
       add_messages w1

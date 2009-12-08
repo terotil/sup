@@ -61,6 +61,7 @@ class ClientConnection
           when :label then LabelHandler
           when :add then AddHandler
           when :stream then StreamHandler
+          when :cancel then CancelHandler
           else
             puts "unknown request #{type.inspect}"
             #reply_error :tag => args[:tag], :type => :uknown_request, :message => "Unknown request"
@@ -288,7 +289,7 @@ class StreamHandler < RequestHandler
           raw = args[:raw] && server.store.get(summary.source_info)
           reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
         end
-        f.when(:die) { die = true }
+        f.when(T[:cancel, args[:tag]]) { die = true }
         f.when(Object) { |o| puts "unexpected #{o.inspect}" }
       end
     end
@@ -308,8 +309,8 @@ end
 # Responses
 # one Done
 class CancelHandler < RequestHandler
-  def request_cancel args
-    reply_error :tag => args[:tag], :type => :unimplemented, :message => "unimplemented"
+  def run
+    server.actor << T[:publish, T[:cancel, args[:tag]]]
   end
 end
 
