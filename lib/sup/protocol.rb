@@ -37,9 +37,10 @@ module Protocol
 
     def initialize server, l, accept
       l.controller = l.instance_eval { @receiver = Actor.current }
-      l.enable unless l.enabled?
+      l.active = true
       die = false
       while not die
+        l.enable unless l.enabled?
         Actor.receive do |f|
           f.when(accept) do |_, _, sock|
             server << T[:client, sock]
