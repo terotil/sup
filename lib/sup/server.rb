@@ -38,6 +38,9 @@ Redwood::Logger.init.add_sink $stderr
 include Redwood::LogsStuff
 
 require 'sup/crypto'
+
+Redwood::CryptoManager.init
+
 require 'sup/protocol'
 require 'sup/message'
 require 'sup/message-chunks'
