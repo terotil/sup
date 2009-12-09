@@ -1,6 +1,6 @@
 module Redwood::Server
 
-class Server
+class Dispatcher
   extend Actorize
   attr_reader :index, :store, :actor
 

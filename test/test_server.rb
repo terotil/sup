@@ -15,7 +15,7 @@ class TestServer < Test::Unit::TestCase
     @store = Redwood::Server::Storage.new File.join(@path, 'db')
     @index = Redwood::Server::XapianIndex.new @path
     @index.load_index
-    @server = Redwood::Server::Server.spawn @index, @store
+    @server = Redwood::Server::Dispatcher.spawn @index, @store
     @socket_path = File.join(@path, 'socket')
     @listener = Redwood::Protocol::UnixListener.listen @server, @socket_path
   end

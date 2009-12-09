@@ -33,7 +33,7 @@ store = Redwood::Server::Storage.new store_filename
 begin
   index.load
 
-  server = Redwood::Server::Server.spawn index, store
+  server = Redwood::Server::Dispatcher.spawn index, store
   listener = Redwood::Protocol::TCPListener.listener HOST, PORT
   Redwood::Protocol::TCPListener.new server, listener
 
