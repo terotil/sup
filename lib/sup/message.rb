@@ -353,9 +353,7 @@ private
       chunks
     elsif m.header.content_type && m.header.content_type.downcase == "message/rfc822"
       if m.body
-        payload_source = PayloadSource.new m.body
-        m2 = Message.new :source => payload_source, :source_info => 0
-        m2.load_from_source!
+        m2 = Message.parse m.body
         [Chunk::EnclosedMessage.new(m2.from, m2.to, m2.cc, m2.date, m2.subj)] + m2.chunks
       else
         debug "no body for message/rfc822 enclosure; skipping"
