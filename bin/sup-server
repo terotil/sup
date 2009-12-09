@@ -25,14 +25,9 @@ PORT = Redwood::Protocol::DEFAULT_TCP_PORT
 lock = Redwood::Server::IndexLock.new Redwood::Server::BASE_DIR
 lock.lock_interactively or exit
 
-index = Redwood::Server::XapianIndex.new
-
-store_filename = 'storage'
-store = Redwood::Server::Storage.new store_filename
-
 begin
-  index.load
-
+  store = Redwood::Server::Storage.new Redwood::Server::STORAGE_FN
+  index = Redwood::Server::Index.new Redwood::Server::BASE_DIR
   server = Redwood::Server::Dispatcher.spawn index, store
   listener = Redwood::Protocol::TCPListener.listener HOST, PORT
   Redwood::Protocol::TCPListener.new server, listener

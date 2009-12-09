@@ -19,6 +19,7 @@ module Redwood::Server
   LOCK_FN    = File.join(BASE_DIR, "lock")
   SUICIDE_FN = File.join(BASE_DIR, "please-kill-yourself")
   HOOK_DIR   = File.join(BASE_DIR, "hooks")
+  STORAGE_FN  = File.join(BASE_DIR, "storage")
 
   YAML_DOMAIN = "masanjin.net"
   YAML_DATE = "2006-10-01"
@@ -46,6 +47,13 @@ require 'sup/thread'
 require 'sup/server/index-lock'
 require 'sup/server/storage'
 require 'sup/server/index'
-require 'sup/server/xapian_index'
 require 'sup/server/requests'
 require 'sup/server/dispatcher'
+
+begin
+  require 'chronic'
+  $have_chronic = true
+rescue LoadError => e
+  debug "optional 'chronic' library not found; date-time query restrictions disabled"
+  $have_chronic = false
+end
