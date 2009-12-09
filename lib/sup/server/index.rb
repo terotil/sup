@@ -472,7 +472,7 @@ EOS
     entry = {
       :message_id => m.id,
       :source_info => m.source_info,
-      :date => m.date,
+      :date => truncate_date(m.date),
       :snippet => snippet,
       :labels => m.labels.to_a,
       :from => [m.from.email, m.from.name],
