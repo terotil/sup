@@ -330,10 +330,10 @@ class String
     out
   end
 
-	# hack for lockfile gem
-	def each &b
-		each_line &b
-	end
+  # hack for lockfile gem
+  def each &b
+    each_line &b
+  end
 end
 
 class Numeric

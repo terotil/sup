@@ -1,32 +1,32 @@
 module Redwood::Server::Config
-	def load
-		## set up default configuration file
-		if File.exists? Redwood::Server::CONFIG_FN
-			$config = load_yaml_obj Redwood::Server::CONFIG_FN
-			abort "#{Redwood::Server::CONFIG_FN} is not a valid configuration file (it's a #{$config.class}, not a hash)" unless $config.is_a?(Hash)
-		else
-			require 'etc'
-			require 'socket'
-			name = Etc.getpwnam(ENV["USER"]).gecos.split(/,/).first rescue nil
-			name ||= ENV["USER"]
-			email = ENV["USER"] + "@" + 
-				begin
-					Socket.gethostbyname(Socket.gethostname).first
-				rescue SocketError
-					Socket.gethostname
-				end
+  def load
+    ## set up default configuration file
+    if File.exists? Redwood::Server::CONFIG_FN
+      $config = load_yaml_obj Redwood::Server::CONFIG_FN
+      abort "#{Redwood::Server::CONFIG_FN} is not a valid configuration file (it's a #{$config.class}, not a hash)" unless $config.is_a?(Hash)
+    else
+      require 'etc'
+      require 'socket'
+      name = Etc.getpwnam(ENV["USER"]).gecos.split(/,/).first rescue nil
+      name ||= ENV["USER"]
+      email = ENV["USER"] + "@" + 
+        begin
+          Socket.gethostbyname(Socket.gethostname).first
+        rescue SocketError
+          Socket.gethostname
+        end
 
-			$config = {
-				:discard_snippets_from_encrypted_messages => false,
-			}
-			begin
-				FileUtils.mkdir_p Redwood::Server::BASE_DIR
-				save_yaml_obj $config, Redwood::Server::CONFIG_FN
-			rescue StandardError => e
-				$stderr.puts "warning: #{e.message}"
-			end
-		end
-	end
+      $config = {
+        :discard_snippets_from_encrypted_messages => false,
+      }
+      begin
+        FileUtils.mkdir_p Redwood::Server::BASE_DIR
+        save_yaml_obj $config, Redwood::Server::CONFIG_FN
+      rescue StandardError => e
+        $stderr.puts "warning: #{e.message}"
+      end
+    end
+  end
 
 ## one-stop shop for yamliciousness
   def save_yaml_obj o, fn, safe=false

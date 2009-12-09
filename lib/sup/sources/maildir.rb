@@ -120,30 +120,30 @@ class Maildir < Source
     debug "scanning maildir #@dir..."
     begin
       @mtimes.each_key do |d|
-	subdir = File.join(@dir, d)
-	raise FatalSourceError, "#{subdir} not a directory" unless File.directory? subdir
+        subdir = File.join(@dir, d)
+        raise FatalSourceError, "#{subdir} not a directory" unless File.directory? subdir
 
-	mtime = File.mtime subdir
+        mtime = File.mtime subdir
 
-	#only scan the dir if the mtime is more recent (or we haven't polled
-	#since startup)
-	if @mtimes[d] < mtime || initial_poll
-	  @mtimes[d] = mtime
-	  @dir_ids[d] = []
-	  Dir[File.join(subdir, '*')].map do |fn|
-	    id = make_id fn
-	    @dir_ids[d] << id
-	    @ids_to_fns[id] = fn
-	  end
-	else
-	  debug "no poll on #{d}.  mtime on indicates no new messages."
-	end
+        #only scan the dir if the mtime is more recent (or we haven't polled
+        #since startup)
+        if @mtimes[d] < mtime || initial_poll
+          @mtimes[d] = mtime
+          @dir_ids[d] = []
+          Dir[File.join(subdir, '*')].map do |fn|
+            id = make_id fn
+            @dir_ids[d] << id
+            @ids_to_fns[id] = fn
+          end
+        else
+          debug "no poll on #{d}.  mtime on indicates no new messages."
+        end
       end
       @ids = @dir_ids.values.flatten.uniq.sort!
     rescue SystemCallError, IOError => e
       raise FatalSourceError, "Problem scanning Maildir directories: #{e.message}."
     end
-    
+
     debug "done scanning maildir"
     @last_scan = Time.now
   end

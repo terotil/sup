@@ -163,7 +163,7 @@ EOS
 
   class ParseError < StandardError; end
 
-	# TODO move into client?
+  # TODO move into client?
   def parse_query s
     query = {}
 

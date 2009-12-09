@@ -35,10 +35,10 @@ EOS
 Modifies message body and headers before editing a new message. Variables
 should be modified in place.
 Variables:
-	header: a hash of headers. See 'signature' hook for documentation.
-	body: an array of lines of body text.
+  header: a hash of headers. See 'signature' hook for documentation.
+  body: an array of lines of body text.
 Return value:
-	none
+  none
 EOS
 
   attr_reader :status
