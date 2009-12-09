@@ -24,6 +24,8 @@ class RequestHandler
 
   def ensure; end
 
+	def index; server.index; end
+
   def message_from_summary summary
     extract_person = lambda { |p| [p.email, p.name] }
     extract_people = lambda { |ps| ps.map(&extract_person) }
@@ -108,12 +110,12 @@ end
 # one Done after all Messages
 class QueryHandler < RequestHandler
   def run
-    q = server.index.parse_query args[:query]
+    q = index.parse_query args[:query]
     fields = args[:fields]
     offset = args[:offset] || 0
     limit = args[:limit]
     i = 0
-    server.index.each_summary q do |summary|
+    index.each_summary q do |summary|
       i += 1
       next unless i > offset
       message = message_from_summary summary
@@ -137,8 +139,8 @@ end
 # one Count
 class CountHandler < RequestHandler
   def run
-    q = server.index.parse_query args[:query]
-    count = server.index.num_results_for q
+    q = index.parse_query args[:query]
+    count = index.num_results_for q
     reply_count :tag => args[:tag], :count => count
   end
 end
@@ -157,13 +159,13 @@ end
 # one Done
 class LabelHandler < RequestHandler
   def run
-    q = server.index.parse_query args[:query]
+    q = index.parse_query args[:query]
     add = args[:add] || []
     remove = args[:remove] || []
-    server.index.each_summary q do |summary|
+    index.each_summary q do |summary|
       labels = summary.labels - remove + add
       m = Redwood::Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
-      server.index.update_message_state m
+      index.update_message_state m
     end
 
     reply_done :tag => args[:tag]
@@ -187,7 +189,7 @@ class AddHandler < RequestHandler
     labels = args[:labels] || []
     addr = server.store.put raw
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
-    server.index.add_message m
+    index.add_message m
     reply_done :tag => args[:tag]
     server.actor << T[:publish, T[:new_message, addr]]
   end
@@ -203,14 +205,14 @@ end
 # multiple Message
 class StreamHandler < RequestHandler
   def run
-    q = server.index.parse_query args[:query]
+    q = index.parse_query args[:query]
     server.actor << T[:subscribe, Actor.current]
     die = false
     while not die
       Actor.receive do |f|
         f.when(T[:new_message]) do |_,addr|
           q[:source_info] = addr
-          summary = server.index.each_summary(q).first or next
+          summary = index.each_summary(q).first or next
           raw = args[:raw] && server.store.get(summary.source_info)
           reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
         end
