@@ -7,7 +7,7 @@ module Server
 
 class Index
   STEM_LANGUAGE = "english"
-  INDEX_VERSION = '1'
+  INDEX_VERSION = '2'
 
   ## dates are converted to integers for xapian, and are used for document ids,
   ## so we must ensure they're reasonably valid. this typically only affect
