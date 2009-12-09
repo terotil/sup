@@ -1,12 +1,10 @@
 # encoding: utf-8
-require "sup/mbox/loader"
-require "sup/mbox/ssh-file"
-require "sup/mbox/ssh-loader"
+require 'time'
 
 module Redwood
 
 module MBox
-  BREAK_RE = /^From \S+ (.+)$/
+  BREAK_RE = /^From \S+ (.+)[\n]$/
 
   def is_break_line? l
     l =~ BREAK_RE or return false

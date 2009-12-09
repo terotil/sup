@@ -3,6 +3,7 @@ require 'rubygems'
 require 'revactor'
 require 'trollop'
 require 'sup/protocol'
+require 'sup/sources/mbox'
 require 'pp'
 require 'yaml'
 include Redwood
@@ -23,6 +24,7 @@ EOS
 
   opt :host, "Host", :default => 'localhost', :short => 'H'
   opt :port, "Port", :default => Protocol::DEFAULT_TCP_PORT, :short => 'P'
+  opt :verbose
 
   stop_on SUB_COMMANDS
 end
@@ -46,6 +48,7 @@ when "label"
 when "add"
   Trollop.options do
     opt :labels, "Labels separated by commas", :default => ""
+    opt :mbox, "Treat input files as mboxes", :default => false
   end
 when "stream"
   Trollop.options do
@@ -89,8 +92,26 @@ when "label"
   reply = c.read
   fail "error labelling messages: #{reply.inspect}" unless reply.first == :done
 when "add"
+  ARGF.binmode
   labels = cmd_opts[:labels].split(',')
-  while raw = gets(nil)
+  get_message = lambda do
+    return ARGF.gets(nil) unless cmd_opts[:mbox]
+    str = ""
+    l = ARGF.gets
+    str << l until ARGF.closed? || ARGF.eof? || MBox::is_break_line?(l = ARGF.gets)
+    str.empty? ? nil : str
+  end
+  i_s = i = 0
+  t = Time.now
+  while raw = get_message[]
+    i += 1
+    t_d = Time.now - t
+    if t_d >= 5
+      i_d = i - i_s
+      puts "indexed #{i} messages (#{i_d/t_d} m/s)" if global_opts[:verbose]
+      t = Time.now
+      i_s = i
+    end
     c.send :add,
            :raw => raw,
            :labels => labels
