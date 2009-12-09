@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 require 'test/unit'
-require 'sup/storage'
+require 'sup/server/storage'
 require 'stringio'
 require 'tmpdir'
 require 'fileutils'

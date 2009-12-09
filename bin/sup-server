@@ -1,15 +1,12 @@
 #!/usr/bin/env ruby
+# encoding: utf-8
 
-require 'uri'
 require 'rubygems'
 require 'trollop'
-require "sup"
 require "sup/server"
-require "sup/storage"
-require 'bert'
 
 opts = Trollop::options do
-  version "sup-server (sup #{Redwood::VERSION})"
+  version "sup-server (sup #{Redwood::Server::VERSION})"
   banner <<EOS
 Usage:
   sup-server [options]
@@ -25,17 +22,18 @@ end
 HOST = 'localhost'
 PORT = Redwood::Protocol::DEFAULT_TCP_PORT
 
-Redwood::start
-index = Redwood::Index.new
+lock = Redwood::Server::IndexLock.new Redwood::Server::BASE_DIR
+lock.lock_interactively or exit
+
+index = Redwood::Server::XapianIndex.new
 
 store_filename = 'storage'
-store = Redwood::Storage.new store_filename
+store = Redwood::Server::Storage.new store_filename
 
-#index.lock_interactively or exit
 begin
   index.load
 
-  server = Redwood::Server.spawn index, store
+  server = Redwood::Server::Server.spawn index, store
   listener = Redwood::Protocol::TCPListener.listener HOST, PORT
   Redwood::Protocol::TCPListener.new server, listener
 
@@ -44,6 +42,5 @@ rescue Exception => e
   File.open("sup-exception-log.txt", "w") { |f| f.puts e.backtrace }
   raise
 ensure
-  Redwood::finish
-  #index.unlock
+  lock.unlock
 end

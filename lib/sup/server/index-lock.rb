@@ -1,35 +1,50 @@
 # encoding: utf-8
 require 'fileutils'
 
-module Redwood
+module Redwood::Server
 
-## wrap a nice interactive layer on top of anything that has a #lock method
-## which throws a LockError which responds to #user, #host, #mtim, #pname, and
-## #pid.
+class IndexLock
+  DELAY = 5 # seconds
 
-module InteractiveLock
-  def pluralize number_of, kind; "#{number_of} #{kind}" + (number_of == 1 ? "" : "s") end
+  class LockError < StandardError
+    def initialize h
+      @h = h
+    end
 
-  def time_ago_in_words time
-    secs = (Time.now - time).to_i
-    mins = secs / 60
-    time = if mins == 0
-      pluralize secs, "second"
-    else
-      pluralize mins, "minute"
+    def method_missing m; @h[m.to_s] end
+  end
+
+  def initialize dir
+    @dir = dir
+    @lockfile = Lockfile.new path, :retries => 0, :max_age => nil
+  end
+
+  def path; File.join @dir, "lock" end
+
+  def lock
+    debug "locking #{path}..."
+    begin
+      @lockfile.lock
+    rescue Lockfile::MaxTriesLockError
+      raise LockError, @lockfile.lockinfo_on_disk
     end
   end
 
-  DELAY = 5 # seconds
+  def unlock
+    if @lockfile.locked?
+      debug "unlocking #{path}..."
+      @lockfile.unlock
+    end
+  end
 
   def lock_interactively stream=$stderr
     begin
-      Index.lock
-    rescue Index::LockError => e
+      lock
+    rescue LockError => e
       stream.puts <<EOS
 Error: the index is locked by another process! User '#{e.user}' on
 host '#{e.host}' is running #{e.pname} with pid #{e.pid}.
-The process was alive as of at least #{time_ago_in_words e.mtime} ago.
+The process was alive as of at least #{e.mtime.to_nice_distance_s} ago.
 
 EOS
       stream.print "Should I ask that process to kill itself (y/n)? "
@@ -47,8 +62,8 @@ EOS
 
         stream.puts "Let's try that again."
         begin
-          Index.lock
-        rescue Index::LockError => e
+          lock
+        rescue LockError => e
           stream.puts "I couldn't lock the index. The lockfile might just be stale."
           stream.print "Should I just remove it and continue? (y/n) "
           stream.flush
@@ -58,9 +73,9 @@ EOS
 
             stream.puts "Let's try that one more time."
             begin
-              Index.lock
+              lock
               true
-            rescue Index::LockError => e
+            rescue LockError => e
             end
           end
         end
@@ -69,6 +84,23 @@ EOS
       stream.puts "Sorry, couldn't unlock the index." unless success
       success
     end
+  end
+
+  def start_lock_updater
+    @lock_updater = Actor.spawn do
+      die = false
+      while not die
+        Actor.receive do |f|
+          f.after(30) { @lockfile.touch_yourself }
+          f.when(:die) { die = true }
+        end
+      end
+    end
+  end
+
+  def stop_lock_updater
+    @lock_updater << :die if @lock_updater
+    @lock_updater = nil
   end
 end
 

@@ -11,69 +11,23 @@ rescue LoadError => e
   $have_chronic = false
 end
 
-module Redwood::Server
+module Redwood
+module Server
 
 class BaseIndex
-  include Redwood::InteractiveLock
-
-  class LockError < StandardError
-    def initialize h
-      @h = h
-    end
-
-    def method_missing m; @h[m.to_s] end
-  end
-
-  #include Singleton
-
   def initialize dir=BASE_DIR
     @dir = dir
-    @lock = Lockfile.new lockfile, :retries => 0, :max_age => nil
     @sync_worker = nil
     @sync_queue = Queue.new
   end
 
-  def lockfile; File.join @dir, "lock" end
-
-  def lock
-    debug "locking #{lockfile}..."
-    begin
-      @lock.lock
-    rescue Lockfile::MaxTriesLockError
-      raise LockError, @lock.lockinfo_on_disk
-    end
-  end
-
-  def start_lock_update_thread
-    @lock_update_thread = Redwood::reporting_thread("lock update") do
-      while true
-        sleep 30
-        @lock.touch_yourself
-      end
-    end
-  end
-
-  def stop_lock_update_thread
-    @lock_update_thread.kill if @lock_update_thread
-    @lock_update_thread = nil
-  end
-
-  def unlock
-    if @lock && @lock.locked?
-      debug "unlocking #{lockfile}..."
-      @lock.unlock
-    end
-  end
-
   def load
-    SourceManager.load_sources
     load_index
   end
 
   def save
     debug "saving index and sources..."
     FileUtils.mkdir_p @dir unless File.exists? @dir
-    SourceManager.save_sources
     save_index
   end
 
@@ -208,4 +162,5 @@ class BaseIndex
   end
 end
 
+end
 end

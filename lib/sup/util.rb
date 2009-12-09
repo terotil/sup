@@ -329,6 +329,11 @@ class String
     out.debug_check
     out
   end
+
+	# hack for lockfile gem
+	def each &b
+		each_line &b
+	end
 end
 
 class Numeric
