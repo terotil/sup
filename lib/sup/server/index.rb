@@ -22,11 +22,9 @@ Variables:
   subs: The string being searched.
 EOS
 
-  def initialize dir=BASE_DIR
-		@dir = dir
+  def initialize path=File.join(Redwood::Server::BASE_DIR, 'xapian')
     @index_mutex = Monitor.new
 
-    path = File.join(@dir, 'xapian')
     if File.exists? path
       @xapian = Xapian::WritableDatabase.new(path, Xapian::DB_OPEN)
       db_version = @xapian.get_metadata 'version'

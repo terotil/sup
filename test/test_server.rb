@@ -11,9 +11,8 @@ require 'messages'
 class TestServer < Test::Unit::TestCase
   def setup
     @path = Dir.mktmpdir
-    ENV['SUP_BASE'] = @path
-    @store = Redwood::Server::Storage.new File.join(@path, 'db')
-    @index = Redwood::Server::Index.new @path
+    @store = Redwood::Server::Storage.new File.join(@path, 'storage')
+    @index = Redwood::Server::Index.new File.join(@path, 'index')
     @server = Redwood::Server::Dispatcher.spawn @index, @store
     @socket_path = File.join(@path, 'socket')
     @listener = Redwood::Protocol::UnixListener.listen @server, @socket_path

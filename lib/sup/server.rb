@@ -20,6 +20,7 @@ module Redwood::Server
   SUICIDE_FN = File.join(BASE_DIR, "please-kill-yourself")
   HOOK_DIR   = File.join(BASE_DIR, "hooks")
   STORAGE_FN  = File.join(BASE_DIR, "storage")
+  INDEX_FN  = File.join(BASE_DIR, "index")
 
   YAML_DOMAIN = "masanjin.net"
   YAML_DATE = "2006-10-01"
