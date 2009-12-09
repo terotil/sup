@@ -12,8 +12,8 @@ class TestServer < Test::Unit::TestCase
   def setup
     @path = Dir.mktmpdir
     @store = Redwood::Server::Storage.new File.join(@path, 'storage')
-    @index = Redwood::Server::Index.new File.join(@path, 'index')
-    @server = Redwood::Server::Dispatcher.spawn @index, @store
+    @index = Redwood::Server::Index.spawn_link File.join(@path, 'index')
+    @server = Redwood::Server::Dispatcher.spawn_link @index, @store
     @socket_path = File.join(@path, 'socket')
     @listener = Redwood::Protocol::UnixListener.listen @server, @socket_path
   end

@@ -24,7 +24,7 @@ class RequestHandler
 
   def ensure; end
 
-	def index; server.index; end
+  def index; server.index; end
 
   def message_from_summary summary
     extract_person = lambda { |p| [p.email, p.name] }
@@ -91,6 +91,13 @@ class RequestHandler
     debug_msg type, args
     wire.send type, args
   end
+
+  def parse_query s
+    index << T[:parse_query, Actor.current, s]
+    q = nil
+    Actor.receive { |f| f.when(T[:parsed_query]) { |_,x| q = x } }
+    q
+  end
 end
 
 # Query request
@@ -110,18 +117,22 @@ end
 # one Done after all Messages
 class QueryHandler < RequestHandler
   def run
-    q = index.parse_query args[:query]
+    q = parse_query args[:query]
     fields = args[:fields]
     offset = args[:offset] || 0
     limit = args[:limit]
-    i = 0
-    index.each_summary q do |summary|
-      i += 1
-      next unless i > offset
-      message = message_from_summary summary
-      raw = args[:raw] && server.store.get(summary.source_info)
-      reply_message :tag => args[:tag], :message => message, :raw => raw
-      break if limit and i >= (offset+limit)
+    finished = false
+
+    index << T[:query, Actor.current, q, offset, limit]
+    while not finished
+      Actor.receive do |f|
+        f.when(T[:query_result]) do |_,summary|
+          message = message_from_summary summary
+          raw = args[:raw] && server.store.get(summary.source_info)
+          reply_message :tag => args[:tag], :message => message, :raw => raw
+        end
+        f.when(:query_finished) { finished = true }
+      end
     end
     reply_done :tag => args[:tag]
   end
@@ -139,8 +150,10 @@ end
 # one Count
 class CountHandler < RequestHandler
   def run
-    q = index.parse_query args[:query]
-    count = index.num_results_for q
+    q = parse_query args[:query]
+    count = nil
+    index << T[:count, Actor.current, q]
+    Actor.receive { |f| f.when(T[:counted]) { |_,c| count = c } }
     reply_count :tag => args[:tag], :count => count
   end
 end
@@ -159,13 +172,22 @@ end
 # one Done
 class LabelHandler < RequestHandler
   def run
-    q = index.parse_query args[:query]
+    q = parse_query args[:query]
     add = args[:add] || []
     remove = args[:remove] || []
-    index.each_summary q do |summary|
-      labels = summary.labels - remove + add
-      m = Redwood::Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
-      index.update_message_state m
+    finished = false
+
+    index << T[:query, Actor.current, q, 0, nil]
+    while not finished
+      Actor.receive do |f|
+        f.when(T[:query_result]) do |_,summary|
+          labels = summary.labels - remove + add
+          m = Redwood::Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
+          index << T[:add, Actor.current, m]
+          Actor.receive { |f| f.when(:added) { } }
+        end
+        f.when(:query_finished) { finished = true }
+      end
     end
 
     reply_done :tag => args[:tag]
@@ -189,7 +211,8 @@ class AddHandler < RequestHandler
     labels = args[:labels] || []
     addr = server.store.put raw
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
-    index.add_message m
+    index << T[:add, Actor.current, m]
+    Actor.receive { |f| f.when(:added) {} }
     reply_done :tag => args[:tag]
     server.actor << T[:publish, T[:new_message, addr]]
   end
@@ -205,14 +228,23 @@ end
 # multiple Message
 class StreamHandler < RequestHandler
   def run
-    q = index.parse_query args[:query]
+    q = parse_query args[:query]
     server.actor << T[:subscribe, Actor.current]
     die = false
     while not die
       Actor.receive do |f|
         f.when(T[:new_message]) do |_,addr|
           q[:source_info] = addr
-          summary = index.each_summary(q).first or next
+          index << T[:query, Actor.current, q, 0, 1]
+          summary = nil
+          finished = false
+          while not finished
+            Actor.receive do |f|
+              f.when(T[:query_result]) { |_,x| summary = x }
+              f.when(:query_finished) { finished = true }
+            end
+          end
+          next unless summary
           raw = args[:raw] && server.store.get(summary.source_info)
           reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
         end
