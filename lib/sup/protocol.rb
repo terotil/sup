@@ -31,6 +31,16 @@ module Protocol
     end
   end
 
+  class MarshalFilter
+    def encode *o
+      Marshal.dump(o)
+    end
+
+    def decode s
+      [Marshal.load(s)]
+    end
+  end
+
   FILTERS = [T[Revactor::Filter::Packet, 4], BERTFilter]
 
   class GenericListener
