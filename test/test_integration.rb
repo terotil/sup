@@ -8,6 +8,7 @@ require 'sup/util'
 require 'messages'
 require 'tmpdir'
 require 'fileutils'
+require 'uri'
 
 RUBY = "ruby"
 EXEC_PATH="./bin"
@@ -16,6 +17,8 @@ LIB_PATHS=%w(./lib ./libxapian-1.9)
 class TestIntegration < Test::Unit::TestCase
   def setup
     @path = Dir.mktmpdir
+    @tcp_uri = URI.parse 'tcp://localhost:24765'
+    @unix_uri = URI.parse "unix:/tmp/sup-sock-#{Process.pid}-#{Time.now.to_i}"
   end
 
   def teardown
@@ -34,7 +37,7 @@ class TestIntegration < Test::Unit::TestCase
 
   def with_server
     ENV['SUP_SERVER_BASE'] = @path
-    io = run_sup "sup-server"
+    io = run_sup "sup-server", '-l', @tcp_uri.to_s, @unix_uri.to_s
     ENV['SUP_SERVER_BASE'] = nil
     begin
       wait_for_server  
@@ -49,7 +52,7 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def with_cmd *args
-    io = run_sup 'sup-cmd', *args
+    io = run_sup 'sup-cmd', '--uri', @tcp_uri.to_s, *args
     begin
       yield io
     ensure
