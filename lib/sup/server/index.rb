@@ -21,7 +21,7 @@ class Index
         end
 
         f.when(T[:count]) do |_,a,q|
-          a << T[:counted, num_results_for(q)]
+          a << T[:counted, count(q)]
         end
 
         f.when(T[:add]) do |_,a,m|
@@ -67,20 +67,12 @@ EOS
     @enquire = Xapian::Enquire.new @xapian
     @enquire.weighting_scheme = Xapian::BoolWeight.new
     @enquire.docid_order = Xapian::Enquire::ASCENDING
-    
-    run
-  end
 
-  def size
-    @xapian.doccount
+    run
   end
 
   def contains_id? id
     find_docid(id) && true
-  end
-
-  def delete id
-    @xapian.delete_document mkterm(:msgid, id)
   end
 
   def build_message id
@@ -125,7 +117,7 @@ EOS
     end
   end
 
-  def num_results_for query={}
+  def count query={}
     xapian_query = build_xapian_query query
     matchset = run_query xapian_query, 0, 0, 100
     matchset.matches_estimated
@@ -151,10 +143,6 @@ EOS
     ret
   end
 
-  def each_id_by_date query={}
-    each_id(query) { |id| yield id, lambda { build_message id } }
-  end
-
   def each_message_in_thread_for m, opts={}
     # TODO thread by subject
     return unless doc = find_doc(m.id)
@@ -178,17 +166,6 @@ EOS
     end
     msgids.each { |id| yield id, lambda { build_message id } }
     true
-  end
-
-  def load_contacts emails, opts={}
-    contacts = Set.new
-    num = opts[:num] || 20
-    each_id_by_date :participants => emails do |id,b|
-      break if contacts.size >= num
-      m = b.call
-      ([m.from]+m.to+m.cc+m.bcc).compact.each { |p| contacts << [p.name, p.email] }
-    end
-    contacts.to_a.compact.map { |n,e| Redwood::Person.new n, e }[0...num]
   end
 
   class ParseError < StandardError; end
@@ -385,11 +362,6 @@ EOS
   def find_doc id
     return unless docid = find_docid(id)
     @xapian.document docid
-  end
-
-  def get_id docid
-    return unless doc = @xapian.document(docid)
-    doc.value MSGID_VALUENO
   end
 
   def get_entry id
