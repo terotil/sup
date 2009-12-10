@@ -89,28 +89,22 @@ class RequestHandler < Actorized
 
   def parse_query s
     index << T[:parse_query, me, s]
-    q = nil
-    Actor.receive { |f| f.when(T[:parsed_query]) { |_,x| q = x } }
-    q
+    expect T[:parsed_query], &_2
   end
 
   def put_raw raw
     store << T[:put, me, raw]
-    addr = nil
-    Actor.receive { |f| f.when(T[:put_done]) { |_,a| addr = a } }
-    addr
+    expect T[:put_done], &_2
   end
 
   def get_raw addr
     store << T[:get, me, addr]
-    raw = nil
-    Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
-    raw
+    expect T[:got], &_2
   end
 
   def index_message m
     index << T[:add, me, m]
-    Actor.receive { |f| f.when(:added) { } }
+    expect :added
   end
 end
 
@@ -162,9 +156,8 @@ end
 class CountHandler < RequestHandler
   def run
     q = parse_query args[:query]
-    count = nil
     index << T[:count, me, q]
-    Actor.receive { |f| f.when(T[:counted]) { |_,c| count = c } }
+    count = expect T[:counted], &_2
     reply_count :tag => args[:tag], :count => count
   end
 end

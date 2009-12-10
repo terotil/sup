@@ -50,8 +50,18 @@ private
     end
   end
 
+  def expect x
+    ret = nil
+    Actor.receive do |f|
+      f.when(x) { |y| ret = yield(*y) if block_given? }
+    end
+    ret
+  end
+
   def ensure
   end
+
+  def _2; lambda { |_,x| x }; end
 end
 
 class Actor::Mailbox::Filter
