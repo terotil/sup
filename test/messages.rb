@@ -1,4 +1,6 @@
 # encoding: utf-8
+require 'stringio'
+require 'sup/person'
 
 module MessageMaker
   Person = Redwood::Person
@@ -45,6 +47,18 @@ module MessageMaker
     end
     s.puts
     s.puts h[:body] if h[:body]
+    str
+  end
+
+  def mbox
+    str = ""
+    @msgs.each do |m|
+      str << "From test@example.com #{Time.now}"
+      m.each_line do |l|
+        l = '>' + l if l =~ /From /
+        str << l
+      end
+    end
     str
   end
 end
