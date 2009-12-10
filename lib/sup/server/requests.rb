@@ -93,6 +93,25 @@ class RequestHandler < Actorized
     Actor.receive { |f| f.when(T[:parsed_query]) { |_,x| q = x } }
     q
   end
+
+  def put_raw raw
+    store << T[:put, me, raw]
+    addr = nil
+    Actor.receive { |f| f.when(T[:put_done]) { |_,a| addr = a } }
+    addr
+  end
+
+  def get_raw addr
+    store << T[:get, me, addr]
+    raw = nil
+    Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
+    raw
+  end
+
+  def index_message m
+    index << T[:add, me, m]
+    Actor.receive { |f| f.when(:added) { } }
+  end
 end
 
 # Query request
@@ -116,22 +135,15 @@ class QueryHandler < RequestHandler
     fields = args[:fields]
     offset = args[:offset] || 0
     limit = args[:limit]
-    finished = false
 
     index << T[:query, me, q, offset, limit]
-    while not finished
-      Actor.receive do |f|
-        f.when(T[:query_result]) do |_,summary|
-          message = message_from_summary summary
-          raw = nil
-          if args[:raw]
-            store << T[:get, me, summary.source_info]
-            Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
-          end
-          reply_message :tag => args[:tag], :message => message, :raw => raw
-        end
-        f.when(:query_finished) { finished = true }
+    main_msgloop do |f|
+      f.when(T[:query_result]) do |_,summary|
+        message = message_from_summary summary
+        raw = args[:raw] ? get_raw(summary.source_info) : nil
+        reply_message :tag => args[:tag], :message => message, :raw => raw
       end
+      f.die? :query_finished
     end
     reply_done :tag => args[:tag]
   end
@@ -174,26 +186,21 @@ class LabelHandler < RequestHandler
     q = parse_query args[:query]
     add = args[:add] || []
     remove = args[:remove] || []
-    finished = false
 
     index << T[:query, me, q, 0, nil]
-    while not finished
-      Actor.receive do |f|
-        f.when(T[:query_result]) do |_,summary|
-          labels = summary.labels - remove + add
-          store << T[:get, me, summary.source_info]
-          raw = nil
-          Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
-          m = Redwood::Message.parse raw, :labels => labels, :source_info => summary.source_info
-          index << T[:add, me, m]
-          Actor.receive { |f| f.when(:added) { } }
-        end
-        f.when(:query_finished) { finished = true }
+    main_msgloop do |f|
+      f.when(T[:query_result]) do |_,summary|
+        labels = summary.labels - remove + add
+        raw = get_raw summary.source_info
+        m = Redwood::Message.parse raw, :labels => labels, :source_info => summary.source_info
+        index_message m
       end
+      f.die? :query_finished
     end
 
     reply_done :tag => args[:tag]
   end
+
 end
 
 # Add request
@@ -211,12 +218,9 @@ class AddHandler < RequestHandler
   def run
     raw = args[:raw]
     labels = args[:labels] || []
-    store << T[:put, me, raw]
-    addr = nil
-    Actor.receive { |f| f.when(T[:put_done]) { |_,a| addr = a } }
+    addr = put_raw raw
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
-    index << T[:add, me, m]
-    Actor.receive { |f| f.when(:added) {} }
+    index_message m
     reply_done :tag => args[:tag]
     server << T[:publish, T[:new_message, addr]]
   end
@@ -253,13 +257,6 @@ class StreamHandler < RequestHandler
       f.die? :query_finished
     end
     summary
-  end
-
-  def get_raw
-    raw = nil
-    store << T[:get, me, summary.source_info]
-    Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
-    raw
   end
 
   def ensure
