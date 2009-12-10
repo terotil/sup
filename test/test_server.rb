@@ -11,7 +11,7 @@ require 'messages'
 class TestServer < Test::Unit::TestCase
   def setup
     @path = Dir.mktmpdir
-    @store = Redwood::Server::Storage.new File.join(@path, 'storage')
+    @store = Redwood::Server::StorageActor.spawn_link(Redwood::Server::Storage.new File.join(@path, 'storage'))
     @index = Redwood::Server::Index.spawn_link File.join(@path, 'index')
     @server = Redwood::Server::Dispatcher.spawn_link @index, @store
     @socket_path = File.join(@path, 'socket')
@@ -20,7 +20,7 @@ class TestServer < Test::Unit::TestCase
 
   def teardown
     @listener << :die if @listener
-    @store.close if @store
+    @store << :die if @store
     FileUtils.rm_r @path if passed?
     puts "not cleaning up #{@path}" unless passed?
   end

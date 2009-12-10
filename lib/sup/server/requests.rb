@@ -25,6 +25,7 @@ class RequestHandler
   def ensure; end
 
   def index; server.index; end
+  def store; server.store; end
 
   def message_from_summary summary
     extract_person = lambda { |p| [p.email, p.name] }
@@ -128,7 +129,11 @@ class QueryHandler < RequestHandler
       Actor.receive do |f|
         f.when(T[:query_result]) do |_,summary|
           message = message_from_summary summary
-          raw = args[:raw] && server.store.get(summary.source_info)
+          raw = nil
+          if args[:raw]
+            store << T[:get, Actor.current, summary.source_info]
+            Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
+          end
           reply_message :tag => args[:tag], :message => message, :raw => raw
         end
         f.when(:query_finished) { finished = true }
@@ -182,7 +187,10 @@ class LabelHandler < RequestHandler
       Actor.receive do |f|
         f.when(T[:query_result]) do |_,summary|
           labels = summary.labels - remove + add
-          m = Redwood::Message.parse server.store.get(summary.source_info), :labels => labels, :source_info => summary.source_info
+          store << T[:get, Actor.current, summary.source_info]
+          raw = nil
+          Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
+          m = Redwood::Message.parse raw, :labels => labels, :source_info => summary.source_info
           index << T[:add, Actor.current, m]
           Actor.receive { |f| f.when(:added) { } }
         end
@@ -209,7 +217,9 @@ class AddHandler < RequestHandler
   def run
     raw = args[:raw]
     labels = args[:labels] || []
-    addr = server.store.put raw
+    store << T[:put, Actor.current, raw]
+    addr = nil
+    Actor.receive { |f| f.when(T[:put_done]) { |_,a| addr = a } }
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
     index << T[:add, Actor.current, m]
     Actor.receive { |f| f.when(:added) {} }
@@ -245,7 +255,11 @@ class StreamHandler < RequestHandler
             end
           end
           next unless summary
-          raw = args[:raw] && server.store.get(summary.source_info)
+          raw = nil
+          if args[:raw]
+            store << T[:get, Actor.current, summary.source_info]
+            Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
+          end
           reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
         end
         f.when(T[:cancel, args[:tag]]) { die = true }
