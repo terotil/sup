@@ -7,7 +7,7 @@ class Dispatcher < Actorized
     self[:index] = index
     self[:store] = store
     @subscribers = []
-    msgloop do |f|
+    main_msgloop do |f|
       f.when(T[:client]) { |_,wire| ClientConnection.spawn me, wire }
       f.when(T[:subscribe]) { |_,q| @subscribers << q }
       f.when(T[:unsubscribe]) { |_,q| @subscribers.delete q }
@@ -22,7 +22,7 @@ class ClientConnection < Actorized
     self[:wire] = wire
     wire.controller = Actor.current
     wire.active = true
-    msgloop do |f|
+    main_msgloop do |f|
       f.when(T[Case::Any.new(:tcp, :unix), wire]) do |_,_,m|
         type, args, = m
         debug_msg type, args

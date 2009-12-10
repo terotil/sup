@@ -5,7 +5,7 @@ module Server
 
 class IndexActor < Actorized
   def run index
-    msgloop do |f|
+    main_msgloop do |f|
       f.when(T[:parse_query]) do |_,a,s|
         a << [:parsed_query, index.parse_query(s)]
       end

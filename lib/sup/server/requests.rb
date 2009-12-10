@@ -234,31 +234,27 @@ class StreamHandler < RequestHandler
   def run
     q = parse_query args[:query]
     server << T[:subscribe, me]
-    die = false
-    while not die
-      Actor.receive do |f|
-        f.when(T[:new_message]) do |_,addr|
-          q[:source_info] = addr
-          index << T[:query, me, q, 0, 1]
-          summary = nil
-          finished = false
-          while not finished
-            Actor.receive do |f|
-              f.when(T[:query_result]) { |_,x| summary = x }
-              f.when(:query_finished) { finished = true }
-            end
+    msgloop do |f|
+      f.when(T[:new_message]) do |_,addr|
+        q[:source_info] = addr
+        index << T[:query, me, q, 0, 1]
+        summary = nil
+        finished = false
+        while not finished
+          Actor.receive do |f|
+            f.when(T[:query_result]) { |_,x| summary = x }
+            f.when(:query_finished) { finished = true }
           end
-          next unless summary
-          raw = nil
-          if args[:raw]
-            store << T[:get, me, summary.source_info]
-            Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
-          end
-          reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
         end
-        f.when(T[:cancel, args[:tag]]) { die = true }
-        f.when(Object) { |o| puts "unexpected #{o.inspect}" }
+        next unless summary
+        raw = nil
+        if args[:raw]
+          store << T[:get, me, summary.source_info]
+          Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
+        end
+        reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
       end
+      f.die? T[:cancel, args[:tag]]
     end
   end
 

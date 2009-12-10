@@ -33,12 +33,20 @@ private
   end
 
   def msgloop
-    while not @die
-      Actor.receive do |f|
-        yield f
-        f.when(:die) { @die = true }
-        f.when(Object) { |o| fail "unexpected message #{o.inspect}" }
+    catch :die do
+      loop do
+        Actor.receive do |f|
+          yield f
+        end
       end
+    end
+  end
+
+  def main_msgloop
+    msgloop do |f|
+      yield f
+      f.die?
+      f.unexpected
     end
   end
 
@@ -49,5 +57,13 @@ end
 class Actor::Mailbox::Filter
   def ignore x
     self.when(x) {}
+  end
+
+  def unexpected x=Object
+    self.when(x) { raise "unexpected message #{x.inspect}" }
+  end
+
+  def die? x=:die
+    self.when(x) { throw(:die) }
   end
 end
