@@ -1,3 +1,6 @@
+$encoding = "UTF-8"
+DEBUG_ENCODING = true
+
 module Redwood
   VERSION = "git"
 

@@ -1,9 +1,8 @@
 #!/usr/bin/ruby
 # encoding: utf-8
 
-DEBUG_ENCODING = true
-
 require 'test/unit'
+require 'sup'
 require 'sup/util'
 require 'messages'
 require 'tmpdir'

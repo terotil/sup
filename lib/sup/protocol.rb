@@ -19,8 +19,6 @@ end
 module Redwood
 
 module Protocol
-  DEFAULT_TCP_PORT = 2734
-
   class BERTFilter
     def encode *o
       BERT.encode(o).tap { |x| x.force_encoding Encoding::ASCII_8BIT }

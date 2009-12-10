@@ -5,9 +5,6 @@ require 'yaml'
 require 'monitor'
 require 'rmail'
 
-DEBUG_ENCODING = true
-$encoding = "UTF-8"
-
 require 'sup'
 
 module Redwood::Server

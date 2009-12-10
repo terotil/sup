@@ -25,9 +25,6 @@ uris = opts[:listen].map do |l|
   URI.parse(l) rescue Trollop::die "invalid uri #{l.inspect}: #{$!.message}"
 end
 
-HOST = 'localhost'
-PORT = Redwood::Protocol::DEFAULT_TCP_PORT
-
 lock = Redwood::Server::IndexLock.new Redwood::Server::BASE_DIR
 lock.lock_interactively or exit
 
