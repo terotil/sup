@@ -37,5 +37,9 @@ rescue Exception => e
   File.open("sup-exception-log.txt", "w") { |f| f.puts e.backtrace }
   raise
 ensure
+  listener << :die if listener
+  server << :die if server
+  index << :die if index
+  store << :die if store
   lock.unlock
 end

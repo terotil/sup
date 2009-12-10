@@ -13,7 +13,8 @@ class Dispatcher
   end
 
   def run
-    loop do
+    die = false
+    while not die
       Actor.receive do |filter|
         filter.when(T[:client]) do |_,wire|
           ClientConnection.spawn self, wire
@@ -21,6 +22,7 @@ class Dispatcher
         filter.when(T[:subscribe]) { |_,q| @subscribers << q }
         filter.when(T[:unsubscribe]) { |_,q| @subscribers.delete q }
         filter.when(T[:publish]) { |_,m| @subscribers.each { |q| q << m } }
+        filter.when(:die) { die = true }
       end
     end
   end

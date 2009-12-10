@@ -20,7 +20,9 @@ class TestServer < Test::Unit::TestCase
 
   def teardown
     @listener << :die if @listener
+    @server << :die if @server
     @store << :die if @store
+    @index << :die if @index
     FileUtils.rm_r @path if passed?
     puts "not cleaning up #{@path}" unless passed?
   end
