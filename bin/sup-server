@@ -28,9 +28,9 @@ lock.lock_interactively or exit
 begin
   store = Redwood::Server::StorageActor.spawn_link(Redwood::Server::Storage.new Redwood::Server::STORAGE_FN)
   index = Redwood::Server::IndexActor.spawn_link(Redwood::Server::Index.new Redwood::Server::INDEX_FN)
-  server = Redwood::Server::Dispatcher.spawn_link index, store
+  dispatcher = Redwood::Server::Dispatcher.spawn_link index, store
   listener = Redwood::Protocol::TCPListener.listener HOST, PORT
-  Redwood::Protocol::TCPListener.new server, listener
+  Redwood::Protocol::TCPListener.new dispatcher, listener
 
   index.save
 rescue Exception => e
@@ -38,7 +38,7 @@ rescue Exception => e
   raise
 ensure
   listener << :die if listener
-  server << :die if server
+  dispatcher << :die if dispatcher
   index << :die if index
   store << :die if store
   lock.unlock
