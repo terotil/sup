@@ -1,6 +1,5 @@
 # encoding: utf-8
 require 'revactor'
-require 'iconv'
 require 'thread'
 require 'yaml'
 require 'monitor'
@@ -9,11 +8,9 @@ require 'rmail'
 DEBUG_ENCODING = true
 $encoding = "UTF-8"
 
-module Redwood; end
+require 'sup'
 
 module Redwood::Server
-  VERSION = "git"
-
   BASE_DIR   = ENV["SUP_SERVER_BASE"] || File.join(ENV["HOME"], ".sup-server")
   CONFIG_FN  = File.join(BASE_DIR, "config.yaml")
   LOCK_FN    = File.join(BASE_DIR, "lock")

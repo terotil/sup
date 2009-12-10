@@ -1,10 +1,8 @@
 #!/usr/bin/ruby
 
 require 'test/unit'
-require 'sup'
+require 'sup/message'
 require 'stringio'
-
-require 'dummy_source'
 
 # override File.exists? to make it work with StringIO for testing.
 # FIXME: do aliasing to avoid breaking this when sup moves from
@@ -68,12 +66,7 @@ User-Agent: Sup/0.3
 Test message!
 EOS
 
-    source = DummySource.new("sup-test://test_simple_message")
-    source.messages = [ message ]
-    source_info = 0
-
-    sup_message = Message.new( {:source => source, :source_info => source_info } )
-    sup_message.load_from_source!
+    sup_message = Message.parse message
 
     # see how well parsing the header went
 
@@ -130,16 +123,10 @@ EOS
     
     recipient_email = sup_message.recipient_email
     assert_equal("fake_receiver@localhost", recipient_email)
-
-    message_source = sup_message.source
-    assert_equal(message_source, source)
-    
-    message_source_info = sup_message.source_info
-    assert_equal(message_source_info, source_info)
     
     # read the message body chunks
 
-    chunks = sup_message.load_from_source!
+    chunks = sup_message.chunks
 
     # there should be only one chunk
     assert_equal(1, chunks.length)
@@ -218,16 +205,11 @@ bin/sup-sync-back
 
 --=-1197232418-506707-26079-6122-2-=--
 EOS
-    source = DummySource.new("sup-test://test_multipart_message")
-    source.messages = [ message ]
-    source_info = 0
+    sup_message = Message.parse message
 
-    sup_message = Message.new( {:source => source, :source_info => source_info } )
-    sup_message.load_from_source!
-    
     # read the message body chunks
 
-    chunks = sup_message.load_from_source!
+    chunks = sup_message.chunks
 
     # this time there should be four chunks: first the quoted part of
     # the message, then the non-quoted part, then the two attachments
@@ -242,7 +224,7 @@ EOS
     # (possibly not yet implemented)
 
   end
-  
+
   def test_broken_message_1
 
     # an example of a broken message, missing "to" and "from" fields
@@ -268,12 +250,7 @@ User-Agent: Sup/0.3
 Test message!
 EOS
     
-    source = DummySource.new("sup-test://test_broken_message_1")
-    source.messages = [ message ]
-    source_info = 0
-
-    sup_message = Message.new( {:source => source, :source_info => source_info } )
-    sup_message.load_from_source!
+    sup_message = Message.parse message
     
     to = sup_message.to
 
@@ -314,19 +291,14 @@ In-Reply-To: <E1J1Rvb-0006k2-CE@localhost.localdomain>
 User-Agent: Sup/0.3
 EOS
     
-    source = DummySource.new("sup-test://test_broken_message_1")
-    source.messages = [ message ]
-    source_info = 0
-
-    sup_message = Message.new( {:source => source, :source_info => source_info } )
-    sup_message.load_from_source!
+    sup_message = Message.parse message
     
     # read the message body chunks: no errors should reach this level
 
     chunks = nil
 
     assert_nothing_raised() do
-      chunks = sup_message.load_from_source!
+      chunks = sup_message.chunks
     end
 
     # the chunks list should be empty
@@ -334,7 +306,7 @@ EOS
     assert_equal(0, chunks.length)
 
   end
-  
+
   def test_multipart_message_2
 
     message = <<EOS
@@ -413,22 +385,17 @@ src=3Dcid:031401Mfdab4$3f3dL780$73387018@57W81fa70Re height=3D0 width=3D0></ifra
 
 
 EOS
-    source = DummySource.new("sup-test://test_multipart_message_2")
-    source.messages = [ message ]
-    source_info = 0
-
-    sup_message = Message.new( {:source => source, :source_info => source_info } )
-    sup_message.load_from_source!
+    sup_message = Message.parse message
     
     # read the message body chunks
 
     assert_nothing_raised() do
-      chunks = sup_message.load_from_source!
+      chunks = sup_message.chunks
     end
 
   end
   
-  def test_blank_header_lines
+  def disabled_test_blank_header_lines
 
     message = <<EOS
 Return-Path: <monitor-list-bounces@widget.com>
@@ -504,12 +471,7 @@ Hi all,
 Michael=
 EOS
 
-    source = DummySource.new("sup-test://test_blank_header_lines")
-    source.messages = [ message ]
-    source_info = 0
-
-    sup_message = Message.new( {:source => source, :source_info => source_info } )
-    sup_message.load_from_source!
+    sup_message = Message.parse message
 
     # See how well parsing the message ID went.
     id = sup_message.id

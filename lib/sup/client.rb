@@ -12,37 +12,7 @@ begin
 rescue LoadError
 end
 
-DEBUG_ENCODING = true
-
-class Object
-  ## this is for debugging purposes because i keep calling #id on the
-  ## wrong object and i want it to throw an exception
-  def id
-    raise "wrong id called on #{self.inspect}"
-  end
-end
-
-class Module
-  def yaml_properties *props
-    props = props.map { |p| p.to_s }
-    vars = props.map { |p| "@#{p}" }
-    klass = self
-    path = klass.name.gsub(/::/, "/")
-
-    klass.instance_eval do
-      define_method(:to_yaml_properties) { vars }
-      define_method(:to_yaml_type) { "!#{Redwood::YAML_DOMAIN},#{Redwood::YAML_DATE}/#{path}" }
-    end
-
-    YAML.add_domain_type("#{Redwood::YAML_DOMAIN},#{Redwood::YAML_DATE}", path) do |type, val|
-      klass.new(*props.map { |p| val[p] })
-    end
-  end
-end
-
-module Redwood
-  VERSION = "git"
-
+module Redwood::Client
   BASE_DIR   = ENV["SUP_BASE"] || File.join(ENV["HOME"], ".sup")
   CONFIG_FN  = File.join(BASE_DIR, "config.yaml")
   COLOR_FN   = File.join(BASE_DIR, "colors.yaml")
@@ -54,11 +24,6 @@ module Redwood
   LOCK_FN    = File.join(BASE_DIR, "lock")
   SUICIDE_FN = File.join(BASE_DIR, "please-kill-yourself")
   HOOK_DIR   = File.join(BASE_DIR, "hooks")
-
-  YAML_DOMAIN = "masanjin.net"
-  YAML_DATE = "2006-10-01"
-
-  DEFAULT_INDEX = 'ferret'
 
   ## record exceptions thrown in threads nicely
   @exceptions = []

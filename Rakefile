@@ -64,3 +64,15 @@ Rake::GemPackageTask.new(spec) do |pkg|
 end
 
 task :tarball => ["pkg/sup-#{SUP_VERSION}.tgz"]
+
+require 'rake/testtask'
+
+task :default => [:test]
+
+desc "Run tests"
+Rake::TestTask.new("test") do |t|
+  t.pattern = 'test/test_*.rb'
+  t.verbose = true
+  t.warning = true
+  t.ruby_opts = %w(-Itest -Ilibxapian-1.9)
+end

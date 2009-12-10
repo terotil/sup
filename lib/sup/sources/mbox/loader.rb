@@ -15,7 +15,7 @@ class Loader < Source
   ## uri_or_fp is horrific. need to refactor.
   def initialize uri_or_fp, start_offset=0, usual=true, archived=false, id=nil, labels=nil
     @mutex = Mutex.new
-    @labels = Set.new((labels || []) - LabelManager::RESERVED_LABELS)
+    @labels = Set.new(labels || [])
 
     case uri_or_fp
     when String

@@ -6,7 +6,7 @@ require 'trollop'
 require "sup/server"
 
 opts = Trollop::options do
-  version "sup-server (sup #{Redwood::Server::VERSION})"
+  version "sup-server (sup #{Redwood::VERSION})"
   banner <<EOS
 Usage:
   sup-server [options]

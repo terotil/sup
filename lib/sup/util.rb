@@ -1,4 +1,5 @@
 # encoding: utf-8
+require 'iconv' rescue NameError
 require 'thread'
 require 'lockfile'
 require 'mime/types'
@@ -699,6 +700,34 @@ class Iconv
     rescue Errno::EINVAL, Iconv::InvalidEncoding, Iconv::InvalidCharacter, Iconv::IllegalSequence, String::CheckError
       warn "couldn't transcode text from #{orig_charset} (#{charset}) to #{target}) (#{text[0 ... 20].inspect}...) (got #{$!.message} (#{$!.class}))"
       text.ascii
+    end
+  end
+end
+
+DEBUG_ENCODING = true
+
+class Object
+  ## this is for debugging purposes because i keep calling #id on the
+  ## wrong object and i want it to throw an exception
+  def id
+    raise "wrong id called on #{self.inspect}"
+  end
+end
+
+class Module
+  def yaml_properties *props
+    props = props.map { |p| p.to_s }
+    vars = props.map { |p| "@#{p}" }
+    klass = self
+    path = klass.name.gsub(/::/, "/")
+
+    klass.instance_eval do
+      define_method(:to_yaml_properties) { vars }
+      define_method(:to_yaml_type) { "!#{Redwood::YAML_DOMAIN},#{Redwood::YAML_DATE}/#{path}" }
+    end
+
+    YAML.add_domain_type("#{Redwood::YAML_DOMAIN},#{Redwood::YAML_DATE}", path) do |type, val|
+      klass.new(*props.map { |p| val[p] })
     end
   end
 end
