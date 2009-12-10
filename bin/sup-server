@@ -27,7 +27,7 @@ lock.lock_interactively or exit
 
 begin
   store = Redwood::Server::StorageActor.spawn_link(Redwood::Server::Storage.new Redwood::Server::STORAGE_FN)
-  index = Redwood::Server::Index.spawn_link Redwood::Server::INDEX_FN
+  index = Redwood::Server::IndexActor.spawn_link(Redwood::Server::Index.new Redwood::Server::INDEX_FN)
   server = Redwood::Server::Dispatcher.spawn_link index, store
   listener = Redwood::Protocol::TCPListener.listener HOST, PORT
   Redwood::Protocol::TCPListener.new server, listener

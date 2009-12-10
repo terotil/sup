@@ -49,6 +49,7 @@ require 'sup/server/index-lock'
 require 'sup/server/storage'
 require 'sup/server/storage-actor'
 require 'sup/server/index'
+require 'sup/server/index-actor'
 require 'sup/server/requests'
 require 'sup/server/dispatcher'
 

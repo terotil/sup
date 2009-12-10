@@ -6,34 +6,6 @@ module Redwood
 module Server
 
 class Index
-  extend Actorize
-
-  def run
-    loop do
-      Actor.receive do |f|
-        f.when(T[:parse_query]) do |_,a,s|
-          a << [:parsed_query, parse_query(s)]
-        end
-
-        f.when(T[:query]) do |_,a,q,offset,limit|
-          each_summary(q,offset,limit) { |x| a << T[:query_result, x] }
-          a << :query_finished
-        end
-
-        f.when(T[:count]) do |_,a,q|
-          a << T[:counted, count(q)]
-        end
-
-        f.when(T[:add]) do |_,a,m|
-          add_message m
-          a << :added
-        end
-
-        f.when(Object) { |x| raise "unknown object #{x.inspect}" }
-      end
-    end
-  end
-
   STEM_LANGUAGE = "english"
   INDEX_VERSION = '3'
 
@@ -67,8 +39,6 @@ EOS
     @enquire = Xapian::Enquire.new @xapian
     @enquire.weighting_scheme = Xapian::BoolWeight.new
     @enquire.docid_order = Xapian::Enquire::ASCENDING
-
-    run
   end
 
   def contains_id? id
