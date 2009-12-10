@@ -232,30 +232,34 @@ end
 # multiple Message
 class StreamHandler < RequestHandler
   def run
-    q = parse_query args[:query]
     server << T[:subscribe, me]
     msgloop do |f|
       f.when(T[:new_message]) do |_,addr|
-        q[:source_info] = addr
-        index << T[:query, me, q, 0, 1]
-        summary = nil
-        finished = false
-        while not finished
-          Actor.receive do |f|
-            f.when(T[:query_result]) { |_,x| summary = x }
-            f.when(:query_finished) { finished = true }
-          end
-        end
-        next unless summary
-        raw = nil
-        if args[:raw]
-          store << T[:get, me, summary.source_info]
-          Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
-        end
+        next unless summary = get_relevant_summary(addr)
+        raw = args[:raw] ? get_raw(addr) : nil
         reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
       end
       f.die? T[:cancel, args[:tag]]
     end
+  end
+
+  def get_relevant_summary addr
+    q = parse_query args[:query]
+    q[:source_info] = addr
+    index << T[:query, me, q, 0, 1]
+    summary = nil
+    msgloop do |f|
+      f.when(T[:query_result]) { |_,x| summary = x }
+      f.die? :query_finished
+    end
+    summary
+  end
+
+  def get_raw
+    raw = nil
+    store << T[:get, me, summary.source_info]
+    Actor.receive { |f| f.when(T[:got]) { |_,d| raw = d } }
+    raw
   end
 
   def ensure
