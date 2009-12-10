@@ -10,12 +10,8 @@ class Person
     email.debug_check
     name.debug_check if name
 
-    @name = if name
-      name = name.strip.gsub(/\s+/, " ")
-      name =~ /^(['"]\s*)(.*?)(\s*["'])$/ ? $2 : name
-    end
-
-    @email = email.strip.gsub(/\s+/, " ").downcase
+    @name = name
+    @email = email
   end
 
   def to_s; "#@name <#@email>" end
@@ -103,6 +99,13 @@ class Person
       else
         [nil, s]
       end
+
+    name = if name
+      name = name.strip.gsub(/\s+/, " ")
+      name =~ /^(['"]\s*)(.*?)(\s*["'])$/ ? $2 : name
+    end
+
+    email = email.strip.gsub(/\s+/, " ").downcase
 
     Person.new name, email
   end
