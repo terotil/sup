@@ -72,19 +72,19 @@ EOS
   end
 
   def size
-    synchronize { @xapian.doccount }
+    @xapian.doccount
   end
 
   def contains_id? id
-    synchronize { find_docid(id) && true }
+    find_docid(id) && true
   end
 
   def delete id
-    synchronize { @xapian.delete_document mkterm(:msgid, id) }
+    @xapian.delete_document mkterm(:msgid, id)
   end
 
   def build_message id
-    entry = synchronize { get_entry id }
+    entry = get_entry id
     return unless entry
 
     source = SourceManager[entry[:source_id]]
@@ -403,15 +403,9 @@ EOS
     not run_query(Q.new(Q::OP_AND, mkterm(:thread, thread_id), mkterm(:label, :Killed)), 0, 1).empty?
   end
 
-  def synchronize &b
-    b.call
-  end
-
   def run_query xapian_query, offset, limit, checkatleast=0
-    synchronize do
-      @enquire.query = xapian_query
-      @enquire.mset(offset, limit-offset, checkatleast)
-    end
+    @enquire.query = xapian_query
+    @enquire.mset(offset, limit-offset, checkatleast)
   end
 
   def run_query_summaries xapian_query, offset, limit
@@ -462,7 +456,7 @@ EOS
   end
 
   def sync_message m, overwrite
-    doc = synchronize { find_doc(m.id) }
+    doc = find_doc(m.id)
     existed = doc != nil
     doc ||= Xapian::Document.new
     do_index_static = overwrite || !existed
@@ -494,14 +488,12 @@ EOS
     index_message_labels doc, entry[:labels], (do_index_static ? [] : old_entry[:labels])
     doc.entry = entry
 
-    synchronize do
-      unless docid = existed ? doc.docid : assign_docid(m, truncate_date(m.date))
-        # Could be triggered by spam
-        warn "docid underflow, dropping #{m.id.inspect}"
-        return
-      end
-      @xapian.replace_document docid, doc
+    unless docid = existed ? doc.docid : assign_docid(m, truncate_date(m.date))
+      # Could be triggered by spam
+      warn "docid underflow, dropping #{m.id.inspect}"
+      return
     end
+    @xapian.replace_document docid, doc
 
     true
   end
