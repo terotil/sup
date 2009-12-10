@@ -49,5 +49,6 @@ ensure
   dispatcher << :die if dispatcher
   index << :die if index
   store << :die if store
+  Actor.sleep 1 # let other actors clean up
   lock.unlock
 end

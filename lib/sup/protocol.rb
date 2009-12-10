@@ -1,6 +1,6 @@
 # encoding: utf-8
 require 'socket'
-require 'revactor'
+require 'sup/actor'
 require 'stringio'
 require 'bert'
 
@@ -43,20 +43,14 @@ module Protocol
 
   FILTERS = [T[Revactor::Filter::Packet, 4], BERTFilter]
 
-  class GenericListener
-    extend Actorize
-
-    def initialize server, l, accept
+  class GenericListener < Actorized
+    def run server, l, accept
       l.controller = l.instance_eval { @receiver = Actor.current }
       l.active = true
-      die = false
-      while not die
+      main_msgloop do |f|
         l.enable unless l.enabled?
-        Actor.receive do |f|
-          f.when(accept) do |_, _, sock|
-            server << T[:client, sock]
-          end
-          f.when(:die) { die = true }
+        f.when(accept) do |_, _, sock|
+          server << T[:client, sock]
         end
       end
     end
@@ -81,16 +75,21 @@ module Protocol
   end
 
   class UnixListener < GenericListener
-    def initialize server, listener
+    def initialize server, listener, path
+      @path = path
       super server, listener, T[:unix_connection, listener]
     end
-    
+
+    def ensure
+      FileUtils.rm_f @path
+    end
+
     def self.listener path
       Revactor::UNIX.listen path, :filter => FILTERS
     end
 
     def self.listen server, path
-      spawn server, listener(path)
+      spawn server, listener(path), path
     end
   end
 
@@ -108,14 +107,9 @@ module Protocol
 
   def self.listen uri, dispatcher
     case uri.scheme
-    when 'tcp'
-      s = Redwood::Protocol::TCPListener.listener uri.host, uri.port
-      Redwood::Protocol::TCPListener.spawn_link dispatcher, s
-    when 'unix'
-      s = Redwood::Protocol::UnixListener.listener uri.path
-      Redwood::Protocol::UnixListener.spawn_link dispatcher, s
-    else
-      fail "unknown URI scheme #{uri.scheme}"
+    when 'tcp' then TCPListener.listen dispatcher, uri.host, uri.port
+    when 'unix' then UnixListener.listen dispatcher, uri.path
+    else fail "unknown URI scheme #{uri.scheme}"
     end
   end
 end

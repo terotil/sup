@@ -11,6 +11,7 @@ class Actorized
       run *a
     ensure
       self.send :ensure
+      debug "#{Actor.current} dying"
     end
   end
 
