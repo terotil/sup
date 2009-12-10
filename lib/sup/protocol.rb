@@ -97,6 +97,27 @@ module Protocol
   def self.unix path
     Revactor::UNIX.connect path, :filter => FILTERS
   end
+
+  def self.connect uri
+    case uri.scheme
+    when 'tcp' then tcp uri.host, uri.port
+    when 'unix' then unix uri.path
+    else fail "unknown URI scheme #{uri.scheme}"
+    end
+  end
+
+  def self.listen uri, dispatcher
+    case uri.scheme
+    when 'tcp'
+      s = Redwood::Protocol::TCPListener.listener uri.host, uri.port
+      Redwood::Protocol::TCPListener.spawn_link dispatcher, s
+    when 'unix'
+      s = Redwood::Protocol::UnixListener.listener uri.path
+      Redwood::Protocol::UnixListener.spawn_link dispatcher, s
+    else
+      fail "unknown URI scheme #{uri.scheme}"
+    end
+  end
 end
 
 end

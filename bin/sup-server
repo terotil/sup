@@ -3,6 +3,7 @@
 
 require 'rubygems'
 require 'trollop'
+require 'uri'
 require "sup/server"
 
 opts = Trollop::options do
@@ -15,8 +16,13 @@ EOS
 
 Other options:
 EOS
+  opt :listen, "URIs to listen on", :type => :strings, :default => [Redwood::DEFAULT_URI]
   opt :verbose, "Increase verbosity."
   opt :version, "Show version information", :short => :none
+end
+
+uris = opts[:listen].map do |l|
+  URI.parse(l) rescue Trollop::die "invalid uri #{l.inspect}: #{$!.message}"
 end
 
 HOST = 'localhost'
@@ -29,15 +35,17 @@ begin
   store = Redwood::Server::StorageActor.spawn_link(Redwood::Server::Storage.new Redwood::Server::STORAGE_FN)
   index = Redwood::Server::IndexActor.spawn_link(Redwood::Server::Index.new Redwood::Server::INDEX_FN)
   dispatcher = Redwood::Server::Dispatcher.spawn_link index, store
-  listener = Redwood::Protocol::TCPListener.listener HOST, PORT
-  Redwood::Protocol::TCPListener.new dispatcher, listener
+  listeners = uris.map { |uri| Redwood::Protocol.listen uri, dispatcher }
 
-  index.save
+  info "ready"
+  main = Actor.current
+  trap('INT') { main << :die }
+  Actor.receive { |f| f.when(:die) {} }
 rescue Exception => e
   File.open("sup-exception-log.txt", "w") { |f| f.puts e.backtrace }
   raise
 ensure
-  listener << :die if listener
+  listeners.each { |q| q << :die } if listeners
   dispatcher << :die if dispatcher
   index << :die if index
   store << :die if store

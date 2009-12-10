@@ -2,6 +2,7 @@
 require 'rubygems'
 require 'revactor'
 require 'trollop'
+require 'sup'
 require 'sup/protocol'
 require 'sup/sources/mbox'
 require 'pp'
@@ -22,12 +23,13 @@ Usage:
   Global options:
 EOS
 
-  opt :host, "Host", :default => 'localhost', :short => 'H'
-  opt :port, "Port", :default => Protocol::DEFAULT_TCP_PORT, :short => 'P'
+  opt :uri, "URI", :default => Redwood::DEFAULT_URI
   opt :verbose
 
   stop_on SUB_COMMANDS
 end
+
+uri = URI.parse(global_opts[:uri]) rescue Trollop::die("invalid uri #{global_opts[:uri].inspect}: #{$!.message}")
 
 cmd = ARGV.shift
 cmd_opts = case cmd
@@ -59,7 +61,7 @@ else
 end
 
 begin
-  c = Protocol.tcp global_opts[:host], global_opts[:port]
+  c = Protocol.connect uri
 rescue Errno::ECONNREFUSED
   $stderr.puts "Error connecting to server: #{$!.message}"
   exit 1
