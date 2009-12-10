@@ -77,8 +77,7 @@ class Message
     header = SavingHash.new { |k| decode_header_field encoded_header[k] }
 
     @id = if header["message-id"]
-      mid = header["message-id"] =~ /<(.+?)>/ ? $1 : header["message-id"]
-      sanitize_message_id mid
+      header["message-id"] =~ /<(.+?)>/ ? $1 : header["message-id"]
     else
       id = "sup-faked-" + Digest::MD5.hexdigest(Marshal.dump(encoded_header))
       from = header["from"]
@@ -118,8 +117,8 @@ class Message
     ## have some extra refs set by the UI. (this happens when the user
     ## joins threads manually). so we will merge the current refs values
     ## in here.
-    @refs = (header["references"] || "").scan(/<(.+?)>/).map { |x| sanitize_message_id x.first }
-    @replytos = (header["in-reply-to"] || "").scan(/<(.+?)>/).map { |x| sanitize_message_id x.first }
+    @refs = (header["references"] || "").scan(/<(.+?)>/).map { |x| x.first }
+    @replytos = (header["in-reply-to"] || "").scan(/<(.+?)>/).map { |x| x.first }
 
     @replyto = Person.from_address header["reply-to"]
     @list_address =
@@ -138,43 +137,10 @@ class Message
 
   def is_list_message?; !@list_address.nil?; end
 
-  ## sanitize message ids by removing spaces and non-ascii characters.
-  ## also, truncate to 255 characters. all these steps are necessary
-  ## to make ferret happy. of course, we probably fuck up a couple
-  ## valid message ids as well. as long as we're consistent, this
-  ## should be fine, though.
-  ##
-  ## also, mostly the message ids that are changed by this belong to
-  ## spam email.
-  ##
-  ## an alternative would be to SHA1 or MD5 all message ids on a regular basis.
-  ## don't tempt me.
-  def sanitize_message_id mid; mid.gsub(/(\s|[^\000-\177])+/, "")[0..254] end
-
   def has_label? t; @labels.member? t; end
-  def add_label l
-    l = l.to_sym
-    return if @labels.member? l
-    @labels << l
-    @dirty = true
-  end
-  def remove_label l
-    l = l.to_sym
-    return unless @labels.member? l
-    @labels.delete l
-    @dirty = true
-  end
 
   def recipients
     @to + @cc + @bcc
-  end
-
-  def labels= l
-    raise ArgumentError, "not a set" unless l.is_a?(Set)
-    raise ArgumentError, "not a set of labels" unless l.all? { |ll| ll.is_a?(Symbol) }
-    return if @labels == l
-    @labels = l
-    @dirty = true
   end
 
   ## returns all the content from a message that will be indexed
@@ -298,42 +264,6 @@ private
     end
   end
 
-  # XXX replace with DummySource?
-  class PayloadSource
-    def initialize raw
-      @raw = raw
-    end
-
-    def load_header offset
-      Source.parse_raw_email_header StringIO.new(raw_header(offset))
-    end
-    
-    def load_message offset
-      RMail::Parser.read raw_message(offset)
-    end
-    
-    def raw_header offset
-      ret = ""
-      f = StringIO.new(@raw)
-      until f.eof? || (l = f.gets) =~ /^$/
-        ret += l
-      end
-      ret
-    end
-    
-    def raw_message offset
-      @raw
-    end
-    
-    def each_raw_message_line offset
-      ret = ""
-      f = StringIO.new(@raw)
-      until f.eof?
-        yield f.gets
-      end
-    end
-  end
-
   ## takes a RMail::Message, breaks it into Chunk:: classes.
   def message_to_chunks m, encrypted=false, sibling_types=[]
     if m.multipart?
@@ -403,7 +333,6 @@ private
         # attachment (should we allow images with generated names?).
         # Lowercase the filename because searches are easier that way 
         @attachments.push filename.downcase unless filename =~ /^sup-attachment-/
-        add_label :attachment unless filename =~ /^sup-attachment-/
         content_type = (m.header.content_type || "application/unknown").downcase # sometimes RubyMail gives us nil
         [Chunk::Attachment.new(content_type, filename, m, sibling_types)]
 

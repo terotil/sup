@@ -35,7 +35,7 @@ class Index
   end
 
   STEM_LANGUAGE = "english"
-  INDEX_VERSION = '2'
+  INDEX_VERSION = '3'
 
   ## dates are converted to integers for xapian, and are used for document ids,
   ## so we must ensure they're reasonably valid. this typically only affect
