@@ -1,5 +1,9 @@
 # encoding: utf-8
 require 'time'
+require 'rmail'
+require 'sup/message-chunks'
+require 'sup/rfc2047'
+require 'sup/person'
 
 module Redwood
 
