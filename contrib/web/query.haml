@@ -1,0 +1,11 @@
+.summaries
+  - summaries.each do |x|
+    .summary
+      .date= x[:date].to_s
+      .subject= x[:subject]
+      .from= "#{x[:from][1]} (#{x[:from][0]})"
+      .to= x[:to].map { |y| "#{y[1]} (#{y[0]})" } * ', '
+      .link
+        - view_url = 'view?message_id=' + x[:message_id]
+        %a(href=view_url) view
+    %br
