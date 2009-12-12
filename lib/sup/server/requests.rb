@@ -7,13 +7,12 @@
 module Redwood::Server
 
 class RequestHandler < Actorized
-  attr_reader :client, :args, :dispatcher, :wire
+  attr_reader :client, :args, :dispatcher
 
   def initialize client, args
     @client = client
     @args = args
     @dispatcher = client[:dispatcher]
-    @wire = client[:wire]
     super()
   end
 
@@ -43,7 +42,7 @@ class RequestHandler < Actorized
   # Parameters
   # tag: opaque object
   def reply_done args
-    respond wire, :done, args
+    respond client, :done, args
   end
 
   # Message reply
@@ -60,7 +59,7 @@ class RequestHandler < Actorized
   #   replytos
   #   labels
   def reply_message args
-    respond wire, :message, args
+    respond client, :message, args
   end
 
   # Count reply
@@ -69,7 +68,7 @@ class RequestHandler < Actorized
   # tag: opaque object
   # count: number of messages matched
   def reply_count args
-    respond wire, :count, args
+    respond client, :count, args
   end
 
   # Error reply
@@ -79,12 +78,12 @@ class RequestHandler < Actorized
   # type: symbol
   # message: string
   def reply_error args
-    respond wire, :error, args
+    respond client, :error, args
   end
 
-  def respond wire, type, args={}
+  def respond client, type, args={}
     debug_msg type, args
-    wire.send type, args
+    client << T[:reply, type, args]
   end
 
   def parse_query s

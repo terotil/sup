@@ -41,6 +41,11 @@ class ClientConnection < Actorized
         end
         klass.spawn me, args unless klass.nil?
       end
+
+      f.when(T[:reply]) do |_,type,args|
+        wire.write [type,args]
+      end
+
       f.ignore T[:unix_closed]
       f.ignore T[:tcp_closed]
     end
