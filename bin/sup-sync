@@ -5,6 +5,22 @@ require 'uri'
 require 'rubygems'
 require 'trollop'
 require "sup"
+require 'sup/protocol'
+require 'sup/protocol-actors'
+require 'sup/sources/source'
+require 'sup/sources/mbox'
+require 'sup/sources/mbox/loader'
+require 'sup/server/config'
+require 'sup/client/poll'
+require 'uri'
+
+require 'sup/logger'
+Redwood::Logger.init.add_sink $stderr
+include Redwood::LogsStuff
+
+require 'sup/crypto'
+
+P = Redwood::Protocol
 
 PROGRESS_UPDATE_INTERVAL = 15 # seconds
 
@@ -77,6 +93,7 @@ text <<EOS
 
 Other options:
 EOS
+  opt :uri, "URI to connect to", :default => Redwood::DEFAULT_URI
   opt :verbose, "Print message ids as they're processed."
   opt :optimize, "As the final operation, optimize the index."
   opt :all_sources, "Scan over all sources.", :short => :none
@@ -95,8 +112,13 @@ end
 target = [:new, :changed, :all, :restored].find { |x| opts[x] } || :new
 op = [:asis, :restore, :discard].find { |x| opts[x] } || :asis
 
-Redwood::start
-index = Redwood::Index.init
+Redwood::SourceManager.init
+Redwood::SourceManager.load_sources "/home/rlane/.sup/sources.yaml"
+Redwood::PollManager.init
+Redwood::CryptoManager.init
+
+uri = URI.parse opts[:uri] rescue Trollop::die :uri, "invalid URI: #{$!.message}"
+c = P.connect_normal uri
 
 restored_state = if opts[:restore]
   dump = {}
@@ -113,10 +135,7 @@ else
 end
 
 seen = {}
-index.lock_interactively or exit
 begin
-  index.load
-
   sources = if opts[:all_sources]
     Redwood::SourceManager.sources
   elsif ARGV.empty?
@@ -144,21 +163,29 @@ begin
     num_added = num_updated = num_scanned = num_restored = 0
     last_info_time = start_time = Time.now
 
-    Redwood::PollManager.each_message_from source do |m|
+    source.each_raw do |raw,source_info,source_labels|
       num_scanned += 1
-      seen[m.id] = true
-      old_m = index.build_message m.id
+      source_uri = URI.parse 'none://nowhere#offset'
+      msgid = nil
+      old = nil
+=begin
+      P.send c, :query, query: "source:#{source_uri}", limit: 1
+      while ((x = P.read c) && x.first != :done)
+        old = x[1]
+      end
+=end
 
       case target
       when :changed
         ## skip this message if we're operating only on changed messages, the
         ## message is in the index, and it's unchanged from what the source is
         ## reporting.
-        next if old_m && old_m.source.id == m.source.id && old_m.source_info == m.source_info
+        fail 'unimplemented'
+        next if old && URI.parse(old[:source]) == source_uri
       when :restored
-        ## skip if we're operating on restored messages, and this one
-        ## ain't (or we wouldn't be making a change)
-        next unless old_m && restored_state[m.id] && restored_state[m.id] != old_m.labels
+        ## skip if we're operating on restored messages, and this one ain't
+        fail 'unimplemented'
+        next unless restored_state[msgid]
       when :new
         ## nothing to do; we'll consider all messages starting at the start offset, which
         ## hasn't been changed.
@@ -167,27 +194,30 @@ begin
         ## was reset to the beginning above.
       end
 
+      labels = source_labels + (source.archived? ? [] : [:inbox])
+
       ## tweak source labels according to commandline arguments if necessary
-      m.labels.delete :inbox if opts[:archive]
-      m.labels.delete :unread if opts[:read]
-      m.labels += opts[:extra_labels].to_set_of_symbols(",")
+      labels.delete :inbox if opts[:archive]
+      labels.delete :unread if opts[:read]
+      labels += opts[:extra_labels].split(', ')
 
       ## decide what to do based on message labels and the operation we're performing
-      dothis, new_labels = case
-      when (op == :restore) && restored_state[m.id]
-        if old_m && (old_m.labels != restored_state[m.id])
+      dothis = case
+      when (op == :restore) && restored_state[msgid]
+        if old && (old_labels != labels)
+          labels = restored_state[msgid]
           num_restored += 1
-          [:update_message_state, restored_state[m.id]]
-        elsif old_m.nil?
+          :label
+        elsif old.nil?
+          labels = restored_state[msgid]
           num_restored += 1
-          m.labels = restored_state[m.id]
-          :add_message
+          :add
         else
           # labels are the same; don't do anything
         end
       when op == :discard
-        if old_m && (old_m.labels != m.labels)
-          [:update_message_state, m.labels]
+        if old && (old_labels != labels)
+          :label
         else
           # labels are the same; don't do anything
         end
@@ -197,28 +227,38 @@ begin
         ## :inbox.
         ##
         ## TODO: refactor such that this isn't duplicated
-        if old_m
-          m.labels = old_m.labels + (m.labels - [:unread, :inbox])
-          :update_message
+        if old
+          labels = old_labels + (labels - [:unread, :inbox])
+          :add
         else
-          :add_message
+          :add
         end
       end
 
       ## now, actually do the operation
       case dothis
-      when :add_message
-        puts "Adding new message #{source}##{m.source_info} with labels #{m.labels}" if opts[:verbose]
-        index.add_message m unless opts[:dry_run]
+      when :add
+        puts "Adding new message #{source}##{source_info} with labels #{labels}" if opts[:verbose]
+        unless opts[:dry_run]
+          P.write c, :add, :raw => raw, :labels => labels
+          P.read c
+        end
         num_added += 1
-      when :update_message
-        puts "Updating message #{source}##{m.source_info}; labels #{old_m.labels} => #{m.labels}; offset #{old_m.source_info} => #{m.source_info}" if opts[:verbose]
-        index.update_message m unless opts[:dry_run]
+      when :update
+        puts "Updating message #{source}##{source_info}; labels #{old_labels} => #{labels}; offset #{old[:source]} => #{source_uri}" if opts[:verbose]
+        unless opts[:dry_run]
+          P.write c, :add, :raw => raw, :labels => labels
+          P.read c
+        end
         num_updated += 1
-      when :update_message_state
-        puts "Changing flags for #{source}##{m.source_info} from #{m.labels} to #{new_labels}" if opts[:verbose]
-        m.labels = new_labels
-        index.update_message_state m unless opts[:dry_run]
+      when :label
+        fail 'unimplemented'
+        puts "Changing flags for #{source}##{source_info} from #{old_labels} to #{labels}" if opts[:verbose]
+        sync_label :source 
+        unless opts[:dry_run]
+          P.write c, :label, :query => "source:#{source_uri}", :remove => old_labels, :add => labels
+          P.read c
+        end
         num_updated += 1
       end
 
@@ -235,39 +275,10 @@ begin
     puts "Restored state on #{num_restored} (#{100.0 * num_restored / num_scanned}%) messages." if num_restored > 0
   end
 
-  ## delete any messages in the index that claim they're from one of
-  ## these sources, but that we didn't see.
-  if (target == :all || target == :changed)
-    puts "Deleting missing messages from the index..."
-    num_del, num_scanned = 0, 0
-    sources.each do |source|
-      raise "no source id for #{source}" unless source.id
-      index.each_message :source_id => source.id, :load_spam => true, :load_deleted => true, :load_killed => true do |m|
-        num_scanned += 1
-        unless seen[m.id]
-          next unless m.source_info >= opts[:start_at] if opts[:start_at]
-          puts "Deleting #{m.id}" if opts[:verbose]
-          index.delete m.id unless opts[:dry_run]
-          num_del += 1
-        end
-      end
-    end
-    puts "Deleted #{num_del} / #{num_scanned} messages"
-  end
-
-  index.save
-
-  if opts[:optimize]
-    puts "Optimizing index..."
-    optt = time { index.optimize unless opts[:dry_run] }
-    puts "Optimized index of size #{index.size} in #{optt}s."
-  end
 rescue Redwood::FatalSourceError => e
   $stderr.puts "Sorry, I couldn't communicate with a source: #{e.message}"
 rescue Exception => e
   File.open("sup-exception-log.txt", "w") { |f| f.puts e.backtrace }
   raise
 ensure
-  Redwood::finish
-  index.unlock
 end
