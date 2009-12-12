@@ -3,6 +3,7 @@ require 'rmail'
 require 'uri'
 
 module Redwood
+class Source
 
 ## Maildir doesn't provide an ordered unique id, which is what Sup
 ## requires to be really useful. So we must maintain, in memory, a
@@ -236,4 +237,5 @@ private
   end
 end
 
+end
 end

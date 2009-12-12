@@ -47,6 +47,7 @@ require 'set'
 ## fuck you, imap committee. you managed to design something nearly as
 ## shitty as mbox but goddamn THIRTY YEARS LATER.
 module Redwood
+class Source
 
 class IMAP < Source
   include SerializeLabelsNicely
@@ -347,4 +348,5 @@ private
 
 end
 
+end
 end
