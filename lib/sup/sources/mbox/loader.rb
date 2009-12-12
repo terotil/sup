@@ -2,6 +2,7 @@
 require 'rmail'
 require 'uri'
 require 'set'
+require 'sup/util'
 
 module Redwood
 module MBox
@@ -18,8 +19,8 @@ class Loader < Source
     @labels = Set.new(labels || [])
 
     case uri_or_fp
-    when String
-      uri = URI(Source.expand_filesystem_uri(uri_or_fp))
+    when String, URI
+      uri = uri_or_fp.is_a?(URI) ? uri_or_fp : URI(Source.expand_filesystem_uri(uri_or_fp))
       raise ArgumentError, "not an mbox uri" unless uri.scheme == "mbox"
       raise ArgumentError, "mbox URI ('#{uri}') cannot have a host: #{uri.host}" if uri.host
       raise ArgumentError, "mbox URI must have a path component" unless uri.path
