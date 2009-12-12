@@ -1,11 +1,13 @@
 # encoding: utf-8
 require 'thread'
+require 'sup/message'
 
 module Redwood
 
 class PollManager
   include Singleton
 
+=begin
   HookManager.register "before-add-message", <<EOS
 Executes immediately before a message is added to the index.
 Variables:
@@ -28,6 +30,7 @@ num_inbox_total_unread: the total number of unread messages in the inbox
    from_and_subj_inbox: an array of (from email address, subject) pairs for
                         only those messages appearing in the inbox
 EOS
+=end
 
   DELAY = 300
 
@@ -161,17 +164,16 @@ EOS
           return
         end
 
-        m = Message.build_from_source source, offset
-        m.labels += source_labels + (source.archived? ? [] : [:inbox])
-        m.labels.delete :unread if m.source_marked_read? # preserve read status if possible
-        m.labels.each { |l| LabelManager << l }
+        labels = source_labels + (source.archived? ? [] : [:inbox])
+        labels.delete :unread if m.source_marked_read? # preserve read status if possible
+        m = Message.parse source.raw_message(offset), source_info: offset, labels: labels
 
-        HookManager.run "before-add-message", :message => m
+        #HookManager.run "before-add-message", :message => m
         yield m
       end
     rescue SourceError => e
       warn "problem getting messages from #{source}: #{e.message}"
-      Redwood::report_broken_sources :force_to_top => true
+      #Redwood::report_broken_sources :force_to_top => true
     end
   end
 
