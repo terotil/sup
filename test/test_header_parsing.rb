@@ -1,9 +1,9 @@
 #!/usr/bin/ruby
 
 require 'test/unit'
+require 'sup'
 require 'sup/source'
 require 'sup/source/mbox'
-require 'sup/source/mbox/loader'
 require 'stringio'
 
 include Redwood
@@ -112,7 +112,7 @@ EOS
   end
 
   def test_from_line_splitting
-    l = MBox::Loader.new StringIO.new(<<EOS)
+    l = MBoxLoader.new StringIO.new(<<EOS)
 From sup-talk-bounces@rubyforge.org Mon Apr 27 12:56:18 2009
 From: Bob <bob@bob.com>
 To: a dear friend
@@ -138,7 +138,7 @@ EOS
   end
 
   def test_more_from_line_splitting
-    l = MBox::Loader.new StringIO.new(<<EOS)
+    l = MBoxLoader.new StringIO.new(<<EOS)
 From sup-talk-bounces@rubyforge.org Mon Apr 27 12:56:18 2009
 From: Bob <bob@bob.com>
 To: a dear friend

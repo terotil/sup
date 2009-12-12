@@ -1,11 +1,11 @@
-#!/usr/bin/env ruby
+require 'sup/util/mbox'
 require 'rubygems'
 require 'revactor'
 require 'trollop'
 require 'sup'
 require 'sup/protocol'
 require 'sup/protocol-actors'
-require 'sup/source/mbox'
+require 'sup/util/mbox'
 require 'pp'
 require 'yaml'
 include Redwood
@@ -101,7 +101,7 @@ when "add"
     return ARGF.gets(nil) unless cmd_opts[:mbox]
     str = ""
     l = ARGF.gets
-    str << l until ARGF.closed? || ARGF.eof? || MBox::is_break_line?(l = ARGF.gets)
+    str << l until ARGF.closed? || ARGF.eof? || Util::MBox::is_break_line?(l = ARGF.gets)
     str.empty? ? nil : str
   end
   i_s = i = 0
