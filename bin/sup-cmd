@@ -5,7 +5,7 @@ require 'trollop'
 require 'sup'
 require 'sup/protocol'
 require 'sup/protocol-actors'
-require 'sup/sources/mbox'
+require 'sup/source/mbox'
 require 'pp'
 require 'yaml'
 include Redwood

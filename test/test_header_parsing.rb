@@ -1,9 +1,9 @@
 #!/usr/bin/ruby
 
 require 'test/unit'
-require 'sup/sources/source'
-require 'sup/sources/mbox'
-require 'sup/sources/mbox/loader'
+require 'sup/source'
+require 'sup/source/mbox'
+require 'sup/source/mbox/loader'
 require 'stringio'
 
 include Redwood
