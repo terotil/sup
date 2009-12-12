@@ -1,6 +1,8 @@
 # encoding: utf-8
 require 'stringio'
 require 'sup/person'
+require 'sup/source'
+require 'sup/source/maildir'
 
 module MessageMaker
   Person = Redwood::Person
@@ -61,6 +63,19 @@ module MessageMaker
     end
     str
   end
+
+  ## NB the message sizes or mtimes need to be different for maildir to work
+  ## XXX fix the above
+  def make_maildir path
+    %w(cur new tmp).each { |x| FileUtils.mkdir_p(path + '/' + x) }
+    source = Redwood::Source::Maildir.new("maildir:" + path)
+    @msgs.each do |m|
+      source.store_message Time.now, "make_maildir@example.com" do |io|
+        io.write m
+      end
+      sleep 1.1
+    end
+  end
 end
 
 module NormalMessages
@@ -68,4 +83,10 @@ module NormalMessages
   msg :id => '1@example.com', :body => 'CountTestTerm QueryOrderingTestTerm', :date => Time.utc(2009, 10, 5)
   msg :id => '2@example.com', :body => 'QueryTestTerm QueryOrderingTestTerm', :date => Time.utc(2009, 11, 22)
   msg :id => '3@example.com', :body => 'QueryTestTerm QueryOrderingTestTerm', :date => Time.utc(2009, 9, 3)
+end
+
+module MoreMessages
+  extend MessageMaker
+  msg :id => '4@example.com', :body => 'nothing'
+  msg :id => '5@example.com', :body => 'nothing'
 end

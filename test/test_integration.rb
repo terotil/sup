@@ -99,12 +99,20 @@ class TestIntegration < Test::Unit::TestCase
   def test_sync
     mbox_fn = "#{@path}/mbox"
     mbox_uri = 'mbox:' + mbox_fn
+    maildir_fn = "#{@path}/maildir"
+    maildir_uri = 'maildir:' + maildir_fn
+
     File.open(mbox_fn, 'w') { |io| io.write NormalMessages.mbox }
+    MoreMessages.make_maildir maildir_fn
+
     with_server do |srv_io|
       with_cmd('count', 'type:mail') { |io| assert_equal 0, io.read.to_i }
       run_sup("sup-add", mbox_uri)
+      run_sup("sup-add", maildir_uri)
       run_sup("sup-sync",'-av', '--uri', @tcp_uri.to_s, mbox_uri)
       with_cmd('count', 'type:mail') { |io| assert_equal NormalMessages.msgs.size, io.read.to_i }
+      run_sup("sup-sync",'-av', '--uri', @tcp_uri.to_s, maildir_uri)
+      with_cmd('count', 'type:mail') { |io| assert_equal MoreMessages.msgs.size + NormalMessages.msgs.size, io.read.to_i }
     end
-  end      
+  end
 end
