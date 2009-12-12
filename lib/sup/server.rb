@@ -24,7 +24,7 @@ require 'sup/util'
 require 'sup/server/config'
 require 'sup/hook'
 
-Redwood::Server::Config.load
+Redwood::Config.load Redwood::Server::CONFIG_FN
 Redwood::HookManager.init Redwood::Server::HOOK_DIR
 
 require 'sup/logger'

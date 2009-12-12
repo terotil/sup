@@ -1,9 +1,11 @@
-module Redwood::Server::Config
-  def load
+module Redwood
+
+module Config
+  def load fn
     ## set up default configuration file
-    if File.exists? Redwood::Server::CONFIG_FN
-      $config = load_yaml_obj Redwood::Server::CONFIG_FN
-      abort "#{Redwood::Server::CONFIG_FN} is not a valid configuration file (it's a #{$config.class}, not a hash)" unless $config.is_a?(Hash)
+    if File.exists? fn
+      $config = load_yaml_obj fn
+      abort "#{fn} is not a valid configuration file (it's a #{$config.class}, not a hash)" unless $config.is_a?(Hash)
     else
       require 'etc'
       require 'socket'
@@ -20,8 +22,8 @@ module Redwood::Server::Config
         :discard_snippets_from_encrypted_messages => false,
       }
       begin
-        FileUtils.mkdir_p Redwood::Server::BASE_DIR
-        save_yaml_obj $config, Redwood::Server::CONFIG_FN
+        FileUtils.mkdir_p File.dirname(fn)
+        save_yaml_obj $config, fn
       rescue StandardError => e
         $stderr.puts "warning: #{e.message}"
       end
@@ -65,4 +67,6 @@ module Redwood::Server::Config
   end
 
   module_function :save_yaml_obj, :load_yaml_obj, :load
+end
+
 end
