@@ -37,9 +37,10 @@ begin
   info "ready"
   main = Actor.current
   trap('INT') { main << :die }
+  trap('TERM') { main << :die }
   Actor.receive { |f| f.when(:die) {} }
 rescue Exception => e
-  File.open("sup-exception-log.txt", "w") { |f| f.puts e.backtrace }
+  File.open("sup-exception-log.txt", "w") { |f| f.puts e.message; f.puts e.backtrace }
   raise
 ensure
   listeners.each { |q| q << :die } if listeners
@@ -48,4 +49,5 @@ ensure
   store << :die if store
   Actor.sleep 1 # let other actors clean up
   lock.unlock
+  info "finished"
 end

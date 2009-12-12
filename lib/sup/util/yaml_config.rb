@@ -13,6 +13,7 @@ module YAMLConfig
       o
     end
 
+    FileUtils.mkdir_p File.dirname(fn)
     if safe
       safe_fn = "#{File.dirname fn}/safe_#{File.basename fn}"
       mode = File.stat(fn).mode if File.exists? fn

@@ -9,7 +9,7 @@ module MBox
 
 class Loader < Source
   include SerializeLabelsNicely
-  yaml_properties :uri, :cur_offset, :usual, :archived, :id, :labels
+  yaml_properties :uri, :cur_offset, :usual, :archived, :labels
 
   attr_reader :labels
 

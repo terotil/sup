@@ -5,6 +5,7 @@ require 'uri'
 require 'rubygems'
 require 'trollop'
 require "sup"
+require 'sup/client'
 require 'sup/protocol'
 require 'sup/protocol-actors'
 require 'sup/source'
@@ -114,7 +115,7 @@ target = [:new, :changed, :all, :restored].find { |x| opts[x] } || :new
 op = [:asis, :restore, :discard].find { |x| opts[x] } || :asis
 
 Redwood::SourceManager.init
-Redwood::SourceManager.load_sources "/home/rlane/.sup/sources.yaml"
+Redwood::SourceManager.load_sources
 Redwood::PollManager.init
 Redwood::CryptoManager.init
 
