@@ -7,10 +7,6 @@ require 'fileutils'
 require 'gettext'
 require 'curses'
 require 'bert'
-begin
-  require 'fastthread'
-rescue LoadError
-end
 
 module Redwood::Client
   BASE_DIR   = ENV["SUP_BASE"] || File.join(ENV["HOME"], ".sup")
@@ -24,70 +20,6 @@ module Redwood::Client
   LOCK_FN    = File.join(BASE_DIR, "lock")
   SUICIDE_FN = File.join(BASE_DIR, "please-kill-yourself")
   HOOK_DIR   = File.join(BASE_DIR, "hooks")
-
-  ## record exceptions thrown in threads nicely
-  @exceptions = []
-  @exception_mutex = Mutex.new
-
-  attr_reader :exceptions
-  def record_exception e, name
-    @exception_mutex.synchronize do
-      @exceptions ||= []
-      @exceptions << [e, name]
-    end
-  end
-
-  def reporting_thread name
-    if $opts[:no_threads]
-      yield
-    else
-      ::Thread.new do
-        begin
-          yield
-        rescue Exception => e
-          record_exception e, name
-        end
-      end
-    end
-  end
-
-  module_function :reporting_thread, :record_exception, :exceptions
-
-## one-stop shop for yamliciousness
-  def save_yaml_obj o, fn, safe=false
-    o = if o.is_a?(Array)
-      o.map { |x| (x.respond_to?(:before_marshal) && x.before_marshal) || x }
-    elsif o.respond_to? :before_marshal
-      o.before_marshal
-    else
-      o
-    end
-
-    if safe
-      safe_fn = "#{File.dirname fn}/safe_#{File.basename fn}"
-      mode = File.stat(fn).mode if File.exists? fn
-      File.open(safe_fn, "w", mode) { |f| f.puts o.to_yaml }
-      FileUtils.mv safe_fn, fn
-    else
-      File.open(fn, "w") { |f| f.puts o.to_yaml }
-    end
-  end
-
-  def load_yaml_obj fn, compress=false
-    o = if File.exists? fn
-      if compress
-        Zlib::GzipReader.open(fn) { |f| YAML::load f }
-      else
-        YAML::load_file fn
-      end
-    end
-    if o.is_a?(Array)
-      o.each { |x| x.after_unmarshal! if x.respond_to?(:after_unmarshal!) }
-    else
-      o.after_unmarshal! if o.respond_to?(:after_unmarshal!)
-    end
-    o
-  end
 
   def start
     Redwood::SentManager.init $config[:sent_source] || 'sup://sent'
@@ -161,52 +93,6 @@ EOM
                   :report_broken_sources
 end
 
-## set up default configuration file
-if File.exists? Redwood::CONFIG_FN
-  $config = Redwood::load_yaml_obj Redwood::CONFIG_FN
-  abort "#{Redwood::CONFIG_FN} is not a valid configuration file (it's a #{$config.class}, not a hash)" unless $config.is_a?(Hash)
-else
-  require 'etc'
-  require 'socket'
-  name = Etc.getpwnam(ENV["USER"]).gecos.split(/,/).first rescue nil
-  name ||= ENV["USER"]
-  email = ENV["USER"] + "@" + 
-    begin
-      Socket.gethostbyname(Socket.gethostname).first
-    rescue SocketError
-      Socket.gethostname
-    end
-
-  $config = {
-    :accounts => {
-      :default => {
-        :name => name,
-        :email => email,
-        :alternates => [],
-        :sendmail => "/usr/sbin/sendmail -oem -ti",
-        :signature => File.join(ENV["HOME"], ".signature")
-      }
-    },
-    :editor => ENV["EDITOR"] || "/usr/bin/vim -f -c 'setlocal spell spelllang=en_us' -c 'set filetype=mail'",
-    :thread_by_subject => false,
-    :edit_signature => false,
-    :ask_for_to => true,
-    :ask_for_cc => true,
-    :ask_for_bcc => false,
-    :ask_for_subject => true,
-    :confirm_no_attachments => true,
-    :confirm_top_posting => true,
-    :discard_snippets_from_encrypted_messages => false,
-    :default_attachment_save_dir => "",
-    :sent_source => "sup://sent"
-  }
-  begin
-    FileUtils.mkdir_p Redwood::BASE_DIR
-    Redwood::save_yaml_obj $config, Redwood::CONFIG_FN
-  rescue StandardError => e
-    $stderr.puts "warning: #{e.message}"
-  end
-end
 
 require "sup/util"
 require "sup/hook"

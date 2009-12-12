@@ -1,10 +1,14 @@
-module Redwood
+require 'sup/util/yaml_config'
+
+module Redwood::Server
+
+YC = Redwood::Util::YAMLConfig
 
 module Config
   def load fn
     ## set up default configuration file
     if File.exists? fn
-      $config = load_yaml_obj fn
+      $config = YC.load_yaml_obj fn
       abort "#{fn} is not a valid configuration file (it's a #{$config.class}, not a hash)" unless $config.is_a?(Hash)
     else
       require 'etc'
@@ -23,50 +27,14 @@ module Config
       }
       begin
         FileUtils.mkdir_p File.dirname(fn)
-        save_yaml_obj $config, fn
+        YC.save_yaml_obj $config, fn
       rescue StandardError => e
         $stderr.puts "warning: #{e.message}"
       end
     end
   end
 
-## one-stop shop for yamliciousness
-  def save_yaml_obj o, fn, safe=false
-    o = if o.is_a?(Array)
-      o.map { |x| (x.respond_to?(:before_marshal) && x.before_marshal) || x }
-    elsif o.respond_to? :before_marshal
-      o.before_marshal
-    else
-      o
-    end
-
-    if safe
-      safe_fn = "#{File.dirname fn}/safe_#{File.basename fn}"
-      mode = File.stat(fn).mode if File.exists? fn
-      File.open(safe_fn, "w", mode) { |f| f.puts o.to_yaml }
-      FileUtils.mv safe_fn, fn
-    else
-      File.open(fn, "w") { |f| f.puts o.to_yaml }
-    end
-  end
-
-  def load_yaml_obj fn, compress=false
-    o = if File.exists? fn
-      if compress
-        Zlib::GzipReader.open(fn) { |f| YAML::load f }
-      else
-        YAML::load_file fn
-      end
-    end
-    if o.is_a?(Array)
-      o.each { |x| x.after_unmarshal! if x.respond_to?(:after_unmarshal!) }
-    else
-      o.after_unmarshal! if o.respond_to?(:after_unmarshal!)
-    end
-    o
-  end
-
-  module_function :save_yaml_obj, :load_yaml_obj, :load
+  module_function :load
 end
 
 end
