@@ -107,11 +107,6 @@ begin
 
     source = 
       case parsed_uri.scheme
-      when "mbox+ssh"
-        say "For SSH connections, if you will use public key authentication, you may leave the username and password blank."
-        say ""
-        username, password = get_login_info uri, Redwood::SourceManager.sources
-        Redwood::MBox::SSHLoader.new uri, username, password, nil, !$opts[:unusual], $opts[:archive], labels
       when "imap", "imaps"
         username, password = get_login_info uri, Redwood::SourceManager.sources
         Redwood::IMAP.new uri, username, password, nil, !$opts[:unusual], $opts[:archive], labels
