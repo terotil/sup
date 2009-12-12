@@ -112,7 +112,7 @@ EOS
   end
 
   def test_from_line_splitting
-    l = MBoxLoader.new StringIO.new(<<EOS)
+    l = Source::MBox.new StringIO.new(<<EOS)
 From sup-talk-bounces@rubyforge.org Mon Apr 27 12:56:18 2009
 From: Bob <bob@bob.com>
 To: a dear friend
@@ -138,7 +138,7 @@ EOS
   end
 
   def test_more_from_line_splitting
-    l = MBoxLoader.new StringIO.new(<<EOS)
+    l = Source::MBox.new StringIO.new(<<EOS)
 From sup-talk-bounces@rubyforge.org Mon Apr 27 12:56:18 2009
 From: Bob <bob@bob.com>
 To: a dear friend

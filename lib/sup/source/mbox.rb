@@ -6,8 +6,9 @@ require 'sup/util'
 require 'sup/util/mbox'
 
 module Redwood
+class Source
 
-class MBoxLoader < Source
+class MBox < Source
   include Util::MBox
   include SerializeLabelsNicely
   yaml_properties :uri, :cur_offset, :usual, :archived, :labels
@@ -178,4 +179,5 @@ class MBoxLoader < Source
   end
 end
 
+end
 end

@@ -118,7 +118,7 @@ begin
       when "maildir"
         Redwood::Maildir.new uri, nil, !$opts[:unusual], $opts[:archive], labels
       when "mbox"
-        Redwood::MBoxLoader.new uri, nil, !$opts[:unusual], $opts[:archive], labels
+        Redwood::Source::MBox.new uri, nil, !$opts[:unusual], $opts[:archive], labels
       when nil
         Trollop::die "Sources must be specified with an URI"
       else
