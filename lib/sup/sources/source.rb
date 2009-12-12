@@ -1,5 +1,7 @@
 # encoding: utf-8
+require 'sup/util'
 require "sup/rfc2047"
+require 'monitor'
 
 module Redwood
 
@@ -103,6 +105,12 @@ class Source
     until done?
       offset, labels = self.next
       yield offset, labels
+    end
+  end
+
+  def each_raw
+    each do |offset,labels|
+      yield raw_message(offset), offset, labels.to_a
     end
   end
 
@@ -211,9 +219,9 @@ class SourceManager
   def unusual_sources; sources.find_all { |s| !s.usual? }; end
 
   def load_sources fn=Redwood::SOURCE_FN
-    source_array = (Redwood::load_yaml_obj(fn) || []).map { |o| Recoverable.new o }
+    source_array = (Redwood::Config.load_yaml_obj(fn) || []).map { |o| Recoverable.new o }
     @source_mutex.synchronize do
-      @sources = Hash[*(source_array).map { |s| [s.id, s] }.flatten]
+      @sources = Hash[*(source_array).map { |s| [s.uri, s] }.flatten]
       @sources_dirty = false
     end
   end
@@ -226,7 +234,7 @@ class SourceManager
           File.chmod 0600, fn
           FileUtils.mv fn, bakfn, :force => true unless File.exists?(bakfn) && File.size(fn) == 0
         end
-        Redwood::save_yaml_obj sources, fn, true
+        Redwood::Config.save_yaml_obj sources, fn, true
         File.chmod 0600, fn
       end
       @sources_dirty = false

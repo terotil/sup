@@ -5,6 +5,7 @@ require 'lockfile'
 require 'mime/types'
 require 'pathname'
 require 'set'
+require 'yaml'
 
 ## time for some monkeypatching!
 class Lockfile
