@@ -15,9 +15,9 @@ class Maildir < Source
   MYHOSTNAME = Socket.gethostname
 
   ## remind me never to use inheritance again.
-  yaml_properties :uri, :cur_offset, :usual, :archived, :id, :labels, :mtimes
-  def initialize uri, last_date=nil, usual=true, archived=false, id=nil, labels=[], mtimes={}
-    super uri, last_date, usual, archived, id
+  yaml_properties :uri, :cur_offset, :usual, :archived, :labels, :mtimes
+  def initialize uri, last_date=nil, usual=true, archived=false, labels=[], mtimes={}
+    super uri, last_date, usual, archived
     uri = URI(Source.expand_filesystem_uri(uri))
 
     raise ArgumentError, "not a maildir URI" unless uri.scheme == "maildir"

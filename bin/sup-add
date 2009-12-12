@@ -6,6 +6,17 @@ require 'rubygems'
 require 'highline/import'
 require 'trollop'
 require "sup"
+require 'sup/util'
+require 'sup/source'
+require 'sup/source/mbox/loader'
+require 'sup/source/maildir'
+require 'sup/client/config'
+
+require 'sup/client'
+
+require 'sup/logger'
+#Redwood::Logger.init.add_sink $stderr
+include Redwood::LogsStuff
 
 $opts = Trollop::options do
   version "sup-add (sup #{Redwood::VERSION})"
@@ -44,6 +55,9 @@ end
 
 Trollop::die "require one or more sources" if ARGV.empty?
 
+Redwood::SourceManager.init
+Redwood::SourceManager.load_sources
+
 ## for sources that require login information, prompt the user for
 ## that. also provide a list of previously-defined login info to
 ## choose from, if any.
@@ -77,10 +91,6 @@ def get_login_info uri, sources
 end
 
 $terminal.wrap_at = :auto
-Redwood::start
-index = Redwood::Index.init
-
-index.lock_interactively or exit
 
 begin
   Redwood::SourceManager.load_sources
@@ -101,14 +111,14 @@ begin
         say "For SSH connections, if you will use public key authentication, you may leave the username and password blank."
         say ""
         username, password = get_login_info uri, Redwood::SourceManager.sources
-        Redwood::MBox::SSHLoader.new uri, username, password, nil, !$opts[:unusual], $opts[:archive], nil, labels
+        Redwood::MBox::SSHLoader.new uri, username, password, nil, !$opts[:unusual], $opts[:archive], labels
       when "imap", "imaps"
         username, password = get_login_info uri, Redwood::SourceManager.sources
-        Redwood::IMAP.new uri, username, password, nil, !$opts[:unusual], $opts[:archive], nil, labels
+        Redwood::IMAP.new uri, username, password, nil, !$opts[:unusual], $opts[:archive], labels
       when "maildir"
-        Redwood::Maildir.new uri, nil, !$opts[:unusual], $opts[:archive], nil, labels
+        Redwood::Maildir.new uri, nil, !$opts[:unusual], $opts[:archive], labels
       when "mbox"
-        Redwood::MBox::Loader.new uri, nil, !$opts[:unusual], $opts[:archive], nil, labels
+        Redwood::MBox::Loader.new uri, nil, !$opts[:unusual], $opts[:archive], labels
       when nil
         Trollop::die "Sources must be specified with an URI"
       else
@@ -116,9 +126,7 @@ begin
       end
     say "Adding #{source}..."
     Redwood::SourceManager.add_source source
+    Redwood::SourceManager.save_sources
   end
 ensure
-  index.save
-  index.unlock
-  Redwood::finish
 end

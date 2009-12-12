@@ -57,13 +57,13 @@ class IMAP < Source
 
   attr_accessor :username, :password
   yaml_properties :uri, :username, :password, :cur_offset, :usual,
-                  :archived, :id, :labels
+                  :archived, :labels
 
-  def initialize uri, username, password, last_idate=nil, usual=true, archived=false, id=nil, labels=[]
+  def initialize uri, username, password, last_idate=nil, usual=true, archived=false, labels=[]
     raise ArgumentError, "username and password must be specified" unless username && password
     raise ArgumentError, "not an imap uri" unless uri =~ %r!imaps?://!
 
-    super uri, last_idate, usual, archived, id
+    super uri, last_idate, usual, archived
 
     @parsed_uri = URI(uri)
     @username = username

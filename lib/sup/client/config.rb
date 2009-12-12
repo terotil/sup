@@ -54,6 +54,7 @@ def load fn
       $stderr.puts "warning: #{e.message}"
     end
   end
+end
 
 end
 

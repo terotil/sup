@@ -68,16 +68,12 @@ class Source
   ## be re-saved to sources.yaml.
   bool_reader :usual, :archived, :dirty
   attr_reader :uri, :cur_offset
-  attr_accessor :id
 
-  def initialize uri, initial_offset=nil, usual=true, archived=false, id=nil
-    raise ArgumentError, "id must be an integer: #{id.inspect}" unless id.is_a? Fixnum if id
-
+  def initialize uri, initial_offset=nil, usual=true, archived=false
     @uri = uri
     @cur_offset = initial_offset
     @usual = usual
     @archived = archived
-    @id = id
     @dirty = false
   end
 
@@ -194,47 +190,44 @@ class SourceManager
     @source_mutex = Monitor.new
   end
 
-  def [](id)
-    @source_mutex.synchronize { @sources[id] }
+  def [](uri)
+    @source_mutex.synchronize { @sources[uri] }
   end
 
   def add_source source
     @source_mutex.synchronize do
       raise "duplicate source!" if @sources.include? source
       @sources_dirty = true
-      max = @sources.max_of { |id, s| s.is_a?(DraftLoader) || s.is_a?(SentLoader) ? 0 : id }
-      source.id ||= (max || 0) + 1
-      ##source.id += 1 while @sources.member? source.id
-      @sources[source.id] = source
+      @sources[source.uri] = source
     end
   end
 
   def sources
     ## favour the inbox by listing non-archived sources first
-    @source_mutex.synchronize { @sources.values }.sort_by { |s| s.id }.partition { |s| !s.archived? }.flatten
+    @source_mutex.synchronize { @sources.values }.sort_by { |s| s.uri }.partition { |s| !s.archived? }.flatten
   end
 
   def source_for uri; sources.find { |s| s.is_source_for? uri }; end
   def usual_sources; sources.find_all { |s| s.usual? }; end
   def unusual_sources; sources.find_all { |s| !s.usual? }; end
 
-  def load_sources fn=Redwood::SOURCE_FN
-    source_array = (Redwood::Config.load_yaml_obj(fn) || []).map { |o| Recoverable.new o }
+  def load_sources fn=Redwood::Client::SOURCE_FN
+    source_array = (Redwood::Util::YAMLConfig.load_yaml_obj(fn) || []).map { |o| Recoverable.new o }
     @source_mutex.synchronize do
       @sources = Hash[*(source_array).map { |s| [s.uri, s] }.flatten]
       @sources_dirty = false
     end
   end
 
-  def save_sources fn=Redwood::SOURCE_FN
+  def save_sources fn=Redwood::Client::SOURCE_FN
     @source_mutex.synchronize do
-      if @sources_dirty || @sources.any? { |id, s| s.dirty? }
+      if @sources_dirty || @sources.any? { |uri, s| s.dirty? }
         bakfn = fn + ".bak"
         if File.exists? fn
           File.chmod 0600, fn
           FileUtils.mv fn, bakfn, :force => true unless File.exists?(bakfn) && File.size(fn) == 0
         end
-        Redwood::Config.save_yaml_obj sources, fn, true
+        Redwood::Util::YAMLConfig.save_yaml_obj sources, fn, true
         File.chmod 0600, fn
       end
       @sources_dirty = false

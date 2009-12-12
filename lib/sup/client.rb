@@ -89,10 +89,10 @@ EOM
     end
   end
 
-  module_function :save_yaml_obj, :load_yaml_obj, :start, :finish,
-                  :report_broken_sources
+  module_function :start, :finish, :report_broken_sources
 end
 
+=begin
 
 require "sup/util"
 require "sup/hook"
@@ -171,3 +171,4 @@ $:.each do |base|
   d = File.join base, "sup/share/modes/"
   Redwood::Mode.load_all_modes d if File.directory? d
 end
+=end
