@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class TextMode < ScrollMode
   attr_reader :text
@@ -17,12 +18,12 @@ class TextMode < ScrollMode
   end
 
   def save_to_disk
-    fn = BufferManager.ask_for_filename :filename, "Save to file: ", @filename
+    fn = $buffers.ask_for_filename :filename, "Save to file: ", @filename
     save_to_file(fn) { |f| f.puts text } if fn
   end
 
   def pipe
-    command = BufferManager.ask(:shell, "pipe command: ")
+    command = $buffers.ask(:shell, "pipe command: ")
     return if command.nil? || command.empty?
 
     output = pipe_to_process(command) do |stream|
@@ -30,9 +31,9 @@ class TextMode < ScrollMode
     end
 
     if output
-      BufferManager.spawn "Output of '#{command}'", TextMode.new(output)
+      $buffers.spawn "Output of '#{command}'", TextMode.new(output)
     else
-      BufferManager.flash "'#{command}' done!"
+      $buffers.flash "'#{command}' done!"
     end
   end
 
@@ -74,4 +75,5 @@ private
   end
 end
 
+end
 end

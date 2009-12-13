@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class ResumeMode < EditMessageMode
   def initialize m
@@ -17,16 +18,16 @@ class ResumeMode < EditMessageMode
   def killable?
     return true if @safe
 
-    case BufferManager.ask_yes_or_no "Discard draft?"
+    case $buffers.ask_yes_or_no "Discard draft?"
     when true
       DraftManager.discard @m
-      BufferManager.flash "Draft discarded."
+      $buffers.flash "Draft discarded."
       true
     when false
       if edited?
         DraftManager.write_draft { |f| write_message f, false }
         DraftManager.discard @m
-        BufferManager.flash "Draft saved."
+        $buffers.flash "Draft saved."
       end
       true
     else
@@ -47,4 +48,5 @@ class ResumeMode < EditMessageMode
   end
 end
 
+end
 end

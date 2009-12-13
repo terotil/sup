@@ -1,4 +1,6 @@
 # encoding: utf-8
+require 'sup/util'
+
 module Redwood
 
 class HookManager
@@ -60,16 +62,12 @@ class HookManager
     end
   end
 
-  include Singleton
-
   def initialize dir
     @dir = dir
     @hooks = {}
     @descs = {}
     @contexts = {}
     @tags = {}
-
-    Dir.mkdir dir unless File.exists? dir
   end
 
   attr_reader :tags

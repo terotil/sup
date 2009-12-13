@@ -1,11 +1,12 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class ForwardMode < EditMessageMode
   ## TODO: share some of this with reply-mode
   def initialize opts={}
     header = {
-      "From" => AccountManager.default_account.full_address,
+      "From" => $accounts.default_account.full_address,
     }
 
     header["Subject"] = 
@@ -30,9 +31,9 @@ class ForwardMode < EditMessageMode
   end
 
   def self.spawn_nicely opts={}
-    to = opts[:to] || (BufferManager.ask_for_contacts(:people, "To: ") or return if ($config[:ask_for_to] != false))
-    cc = opts[:cc] || (BufferManager.ask_for_contacts(:people, "Cc: ") or return if $config[:ask_for_cc])
-    bcc = opts[:bcc] || (BufferManager.ask_for_contacts(:people, "Bcc: ") or return if $config[:ask_for_bcc])
+    to = opts[:to] || ($buffers.ask_for_contacts(:people, "To: ") or return if ($config[:ask_for_to] != false))
+    cc = opts[:cc] || ($buffers.ask_for_contacts(:people, "Cc: ") or return if $config[:ask_for_cc])
+    bcc = opts[:bcc] || ($buffers.ask_for_contacts(:people, "Bcc: ") or return if $config[:ask_for_bcc])
     
     attachment_hash = {}
     attachments = opts[:attachments] || []
@@ -58,7 +59,7 @@ class ForwardMode < EditMessageMode
         "something"
       end
 
-    BufferManager.spawn title, mode
+    $buffers.spawn title, mode
     mode.edit_message
   end
 
@@ -71,4 +72,5 @@ protected
   end
 end
 
+end
 end

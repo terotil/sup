@@ -304,8 +304,8 @@ class String
   class CheckError < ArgumentError; end
   def check
     begin
-      File.open('out', 'w') { |io| io.write self }
-      fail "unexpected encoding #{encoding}" if respond_to?(:encoding) && encoding != Encoding::UTF_8
+      #File.open('out', 'w') { |io| io.write self }
+      fail "unexpected encoding #{encoding}" if respond_to?(:encoding) && !(encoding == Encoding::UTF_8  || encoding == Encoding::US_ASCII)
       fail "invalid encoding" if respond_to?(:valid_encoding?) && !valid_encoding?
       scan // if DEBUG_ENCODING
     rescue
@@ -536,6 +536,7 @@ class Time
   end
 end
 
+=begin
 ## simple singleton module. far less complete and insane than the ruby standard
 ## library one, but it automatically forwards methods calls and allows for
 ## constructors that take arguments.
@@ -566,10 +567,12 @@ module Singleton
   end
 
   def self.included klass
+    puts "inkluded #{klass.inspect}"
     klass.private_class_method :allocate, :new
     klass.extend ClassMethods
   end
 end
+=end
 
 ## wraps an object. if it throws an exception, keeps a copy.
 class Recoverable
@@ -729,4 +732,20 @@ class Module
       klass.new(*props.map { |p| val[p] })
     end
   end
+end
+
+def hook name, description
+  $hooks.register name, description if $hooks
+end
+
+## This sucks
+class Symbol
+  alias :old_to_s :to_s
+  def to_s
+    old_to_s.tap { |x| x.force_encoding Encoding::UTF_8 }
+  end
+end
+
+ENV_UTF8 = SavingHash.new do |k|
+  ENV[k].dup.tap { |x| x.force_encoding Encoding::UTF_8 } if ENV.member? k
 end

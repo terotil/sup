@@ -250,8 +250,7 @@ class ThreadSet
   attr_reader :num_messages
   bool_reader :thread_by_subj
 
-  def initialize index, thread_by_subj=true
-    @index = index
+  def initialize thread_by_subj=true
     @num_messages = 0
     ## map from message ids to container objects
     @messages = SavingHash.new { |id| Container.new id }
@@ -326,6 +325,7 @@ class ThreadSet
 
   ## load in (at most) num number of threads from the index
   def load_n_threads num, opts={}
+=begin
     @index.each_id_by_date opts do |mid, builder|
       break if size >= num unless num == -1
       next if contains_id? mid
@@ -334,16 +334,19 @@ class ThreadSet
       load_thread_for_message m, :skip_killed => opts[:skip_killed], :load_deleted => opts[:load_deleted], :load_spam => opts[:load_spam]
       yield size if block_given?
     end
+=end
   end
 
   ## loads in all messages needed to thread m
   ## may do nothing if m's thread is killed
   def load_thread_for_message m, opts={}
+=begin
     good = @index.each_message_in_thread_for m, opts do |mid, builder|
       next if contains_id? mid
       add_message builder.call
     end
     add_message m if good
+=end
   end
 
   ## merges in a pre-loaded thread

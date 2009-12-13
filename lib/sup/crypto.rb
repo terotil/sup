@@ -2,8 +2,6 @@
 module Redwood
 
 class CryptoManager
-  include Singleton
-
   class Error < StandardError; end
 
   OUTGOING_MESSAGE_OPERATIONS = OrderedHash.new(

@@ -7,37 +7,32 @@ require 'fileutils'
 require 'gettext'
 require 'curses'
 require 'bert'
+require 'sup/util'
 
 module Redwood::Client
   BASE_DIR   = ENV["SUP_BASE"] || File.join(ENV["HOME"], ".sup")
   CONFIG_FN  = File.join(BASE_DIR, "config.yaml")
   COLOR_FN   = File.join(BASE_DIR, "colors.yaml")
   SOURCE_FN  = File.join(BASE_DIR, "sources.yaml")
-  LABEL_FN   = File.join(BASE_DIR, "labels.txt")
   CONTACT_FN = File.join(BASE_DIR, "contacts.txt")
-  DRAFT_DIR  = File.join(BASE_DIR, "drafts")
-  SENT_FN    = File.join(BASE_DIR, "sent.mbox")
+  HOOK_DIR    = File.join(BASE_DIR, "hooks")
   LOCK_FN    = File.join(BASE_DIR, "lock")
   SUICIDE_FN = File.join(BASE_DIR, "please-kill-yourself")
-  HOOK_DIR   = File.join(BASE_DIR, "hooks")
 
   def start
-    Redwood::SentManager.init $config[:sent_source] || 'sup://sent'
-    Redwood::ContactManager.init Redwood::CONTACT_FN
-    Redwood::LabelManager.init Redwood::LABEL_FN
-    Redwood::AccountManager.init $config[:accounts]
-    Redwood::DraftManager.init Redwood::DRAFT_DIR
-    Redwood::UpdateManager.init
-    Redwood::PollManager.init
-    Redwood::CryptoManager.init
-    Redwood::UndoManager.init
-    Redwood::SourceManager.init
+    Dir.mkdir BASE_DIR unless File.exists? BASE_DIR
+    $sources = Redwood::SourceManager.new SOURCE_FN
+    $sources.load_sources
+    $config = Redwood::Client::Config.load CONFIG_FN
+    $contacts = Redwood::Client::ContactManager.new CONTACT_FN
+    $account = Redwood::Client::AccountManager.new $config[:accounts]
+    $crypto = Redwood::CryptoManager.new
+    $undo = Redwood::Client::UndoManager.new
   end
 
   def finish
-    Redwood::LabelManager.save if Redwood::LabelManager.instantiated?
-    Redwood::ContactManager.save if Redwood::ContactManager.instantiated?
-    Redwood::BufferManager.deinstantiate! if Redwood::BufferManager.instantiated?
+    $contacts.save if $contacts
+    $sources.save_sources if $sources
   end
 
   ## not really a good place for this, so I'll just dump it here.
@@ -47,7 +42,7 @@ module Redwood::Client
   def report_broken_sources opts={}
     return unless BufferManager.instantiated?
 
-    broken_sources = SourceManager.sources.select { |s| s.error.is_a? FatalSourceError }
+    broken_sources = $sources.sources.select { |s| s.error.is_a? FatalSourceError }
     unless broken_sources.empty?
       BufferManager.spawn_unless_exists("Broken source notification for #{broken_sources.join(',')}", opts) do
         TextMode.new(<<EOM)
@@ -89,10 +84,20 @@ EOM
     end
   end
 
-  module_function :start, :finish, :report_broken_sources
-end
+  ## record exceptions thrown in threads nicely
+  @exceptions = []
+  @exception_mutex = Mutex.new
 
-=begin
+  attr_reader :exceptions
+  def record_exception e, name
+    @exception_mutex.synchronize do
+      @exceptions ||= []
+      @exceptions << [e, name]
+    end
+  end
+
+  module_function :start, :finish, :report_broken_sources, :exceptions, :record_exception
+end
 
 require "sup/util"
 require "sup/hook"
@@ -100,75 +105,72 @@ require "sup/hook"
 ## we have to initialize this guy first, because other classes must
 ## reference it in order to register hooks, and they do that at parse
 ## time.
-Redwood::HookManager.init Redwood::HOOK_DIR
+$hooks = Redwood::HookManager.new Redwood::Client::HOOK_DIR
 
 ## everything we need to get logging working
 require "sup/logger"
-Redwood::Logger.init.add_sink $stderr
+$logger = Redwood::Logger.new
+$logger.add_sink $stderr
 include Redwood::LogsStuff
 
 ## determine encoding and character set
-  $encoding = Locale.current.charset
-  if $encoding
-    debug "using character set encoding #{$encoding.inspect}"
-  else
-    warn "can't find character set by using locale, defaulting to utf-8"
-    $encoding = "UTF-8"
-  end
+$encoding = Locale.current.charset
+if $encoding
+  debug "using character set encoding #{$encoding.inspect}"
+else
+  warn "can't find character set by using locale, defaulting to utf-8"
+  $encoding = "UTF-8"
+end
 
 require 'sup/protocol'
-require "sup/buffer"
-require "sup/keymap"
-require "sup/mode"
-require "sup/modes/scroll-mode"
-require "sup/modes/text-mode"
-require "sup/modes/log-mode"
-require "sup/update"
+require "sup/client/buffer"
+require "sup/client/keymap"
+require "sup/client/mode"
+require "sup/client/modes/scroll-mode"
+require "sup/client/modes/text-mode"
+require "sup/client/modes/log-mode"
+require "sup/client/update"
+require "sup/client/config"
 require "sup/message-chunks"
 require "sup/message"
 require "sup/source"
-require "sup/mbox"
-require "sup/maildir"
-require "sup/imap"
+require "sup/source/mbox"
+require "sup/source/maildir"
+require "sup/source/imap"
 require "sup/person"
-require "sup/account"
+require "sup/client/account"
 require "sup/thread"
-require "sup/interactive-lock"
-require "sup/index"
-require "sup/textfield"
-require "sup/colormap"
-require "sup/label"
-require "sup/contact"
-require "sup/tagger"
-require "sup/draft"
-require "sup/poll"
+require "sup/client/textfield"
+require "sup/client/colormap"
+require "sup/client/label"
+require "sup/client/contact"
+require "sup/client/tagger"
+require "sup/client/poll"
 require "sup/crypto"
-require "sup/undo"
-require "sup/horizontal-selector"
-require "sup/modes/line-cursor-mode"
-require "sup/modes/help-mode"
-require "sup/modes/edit-message-mode"
-require "sup/modes/compose-mode"
-require "sup/modes/resume-mode"
-require "sup/modes/forward-mode"
-require "sup/modes/reply-mode"
-require "sup/modes/label-list-mode"
-require "sup/modes/contact-list-mode"
-require "sup/modes/thread-view-mode"
-require "sup/modes/thread-index-mode"
-require "sup/modes/label-search-results-mode"
-require "sup/modes/search-results-mode"
-require "sup/modes/person-search-results-mode"
-require "sup/modes/inbox-mode"
-require "sup/modes/buffer-list-mode"
-require "sup/modes/poll-mode"
-require "sup/modes/file-browser-mode"
-require "sup/modes/completion-mode"
-require "sup/modes/console-mode"
-require "sup/sent"
+require "sup/client/undo"
+require "sup/client/horizontal-selector"
+require "sup/client/modes/line-cursor-mode"
+require "sup/client/modes/help-mode"
+require "sup/client/modes/edit-message-mode"
+require "sup/client/modes/compose-mode"
+require "sup/client/modes/resume-mode"
+require "sup/client/modes/forward-mode"
+require "sup/client/modes/reply-mode"
+require "sup/client/modes/label-list-mode"
+require "sup/client/modes/contact-list-mode"
+require "sup/client/modes/thread-view-mode"
+require "sup/client/modes/thread-index-mode"
+require "sup/client/modes/label-search-results-mode"
+require "sup/client/modes/search-results-mode"
+require "sup/client/modes/person-search-results-mode"
+require "sup/client/modes/inbox-mode"
+require "sup/client/modes/buffer-list-mode"
+require "sup/client/modes/poll-mode"
+require "sup/client/modes/file-browser-mode"
+require "sup/client/modes/completion-mode"
+require "sup/client/modes/console-mode"
 
 $:.each do |base|
   d = File.join base, "sup/share/modes/"
   Redwood::Mode.load_all_modes d if File.directory? d
 end
-=end

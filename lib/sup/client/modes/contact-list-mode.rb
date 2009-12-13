@@ -1,18 +1,19 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 module CanAliasContacts
   def alias_contact p
-    aalias = BufferManager.ask(:alias, "Alias for #{p.longname}: ", ContactManager.alias_for(p))
+    aalias = $buffers.ask(:alias, "Alias for #{p.longname}: ", ContactManager.alias_for(p))
     return if aalias.nil?
     aalias = nil if aalias.empty? # allow empty aliases
 
-    name = BufferManager.ask(:name, "Name for #{p.longname}: ", p.name)
+    name = $buffers.ask(:name, "Name for #{p.longname}: ", p.name)
     return if name.nil? || name.empty? # don't allow empty names
     p.name = name
 
     ContactManager.update_alias p, aalias
-    BufferManager.flash "Contact updated!"
+    $buffers.flash "Contact updated!"
   end
 end
 
@@ -64,14 +65,14 @@ class ContactListMode < LineCursorMode
     @num += num
     load
     update
-    BufferManager.flash "Added #{num.pluralize 'contact'}."
+    $buffers.flash "Added #{num.pluralize 'contact'}."
   end
 
   def multi_select people
     case @mode
     when :regular
       mode = ComposeMode.new :to => people
-      BufferManager.spawn "new message", mode
+      $buffers.spawn "new message", mode
       mode.edit_message
     end
   end
@@ -83,7 +84,7 @@ class ContactListMode < LineCursorMode
 
   def multi_search people
     mode = PersonSearchResultsMode.new people
-    BufferManager.spawn "search for #{people.map { |p| p.name }.join(', ')}", mode
+    $buffers.spawn "search for #{people.map { |p| p.name }.join(', ')}", mode
     mode.load_threads :num => mode.buffer.content_height
   end
 
@@ -102,7 +103,7 @@ class ContactListMode < LineCursorMode
     Redwood::reporting_thread("contact manager load in bg") do
       load
       update
-      BufferManager.draw_screen
+      $buffers.draw_screen
     end
   end
 
@@ -110,7 +111,7 @@ class ContactListMode < LineCursorMode
     @num ||= (buffer.content_height * 2)
     @user_contacts = ContactManager.contacts_with_aliases
     num = [@num - @user_contacts.length, 0].max
-    BufferManager.say("Loading #{num} contacts from index...") do
+    $buffers.say("Loading #{num} contacts from index...") do
       recentc = Index.load_contacts AccountManager.user_emails, :num => num
       @contacts = (@user_contacts + recentc).sort_by { |p| p.sort_by_me }.uniq
     end
@@ -146,4 +147,5 @@ protected
   end
 end
 
+end
 end

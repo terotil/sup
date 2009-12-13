@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class BufferListMode < LineCursorMode
   register_keymap do |k|
@@ -28,7 +29,7 @@ protected
   end
 
   def regen_text
-    @bufs = BufferManager.buffers.reject { |name, buf| buf.mode == self }.sort_by { |name, buf| buf.atime }.reverse
+    @bufs = $buffers.buffers.reject { |name, buf| buf.mode == self }.sort_by { |name, buf| buf.atime }.reverse
     width = @bufs.max_of { |name, buf| buf.mode.name.length }
     @text = @bufs.map do |name, buf|
       base_color = buf.system? ? :system_buf_color : :regular_buf_color
@@ -39,8 +40,9 @@ protected
   end
 
   def jump_to_buffer
-    BufferManager.raise_to_front @bufs[curpos][1]
+    $buffers.raise_to_front @bufs[curpos][1]
   end
 end
 
+end
 end

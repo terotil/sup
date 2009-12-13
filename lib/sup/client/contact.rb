@@ -1,9 +1,8 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class ContactManager
-  include Singleton
-
   def initialize fn
     @fn = fn
 
@@ -57,4 +56,5 @@ class ContactManager
   end
 end
 
+end
 end

@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class ReplyMode < EditMessageMode
   REPLY_TYPES = [:sender, :recipient, :list, :all, :user]
@@ -11,7 +12,7 @@ class ReplyMode < EditMessageMode
     :user => "Customized"
   }
 
-  HookManager.register "attribution", <<EOS
+  hook "attribution", <<EOS
 Generates an attribution ("Excerpts from Joe Bloggs's message of Fri Jan 11 09:54:32 -0500 2008:").
 Variables:
   message: a message object representing the message being replied to
@@ -20,7 +21,7 @@ Return value:
   A string containing the text of the quote line (can be multi-line)
 EOS
 
-  HookManager.register "reply-from", <<EOS
+  hook "reply-from", <<EOS
 Selects a default address for the From: header of a new reply.
 Variables:
   message: a message object representing the message being replied to
@@ -30,7 +31,7 @@ Return value:
   default behavior.
 EOS
 
-  HookManager.register "reply-to", <<EOS
+  hook "reply-to", <<EOS
 Set the default reply-to mode.
 Variables:
   modes: array of valid modes to choose from, which will be a subset of
@@ -51,7 +52,7 @@ EOS
 
     ## first, determine the address at which we received this email. this will
     ## become our From: address in the reply.
-    hook_reply_from = HookManager.run "reply-from", :message => @m
+    hook_reply_from = $hooks.run "reply-from", :message => @m
 
     ## sanity check that selection is a Person (or we'll fail below)
     ## don't check that it's an Account, though; assume they know what they're
@@ -136,7 +137,7 @@ EOS
     types = REPLY_TYPES.select { |t| @headers.member?(t) }
     @type_selector = HorizontalSelector.new "Reply to:", types, types.map { |x| TYPE_DESCRIPTIONS[x] }
 
-    hook_reply = HookManager.run "reply-to", :modes => types
+    hook_reply = $hooks.run "reply-to", :modes => types
 
     @type_selector.set_to(
       if types.include? type_arg
@@ -152,7 +153,7 @@ EOS
       end)
 
     @headers.each do |k, v|
-      HookManager.run "before-edit", :header => v, :body => body
+      $hooks.run "before-edit", :header => v, :body => body
     end
 
     super :header => @headers[@type_selector.val], :body => body, :twiddles => false
@@ -178,7 +179,7 @@ protected
   end
 
   def reply_body_lines m
-    attribution = HookManager.run("attribution", :message => m) || default_attribution(m)
+    attribution = $hooks.run("attribution", :message => m) || default_attribution(m)
     lines = attribution.split("\n") + m.quotable_body_lines.map { |l| "> #{l}" }
     lines.pop while lines.last =~ /^\s*$/
     lines
@@ -210,4 +211,5 @@ protected
   end
 end
 
+end
 end

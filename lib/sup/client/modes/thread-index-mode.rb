@@ -2,6 +2,7 @@
 require 'set'
 
 module Redwood
+module Client
 
 ## subclasses should implement:
 ## - is_relevant?
@@ -11,13 +12,13 @@ class ThreadIndexMode < LineCursorMode
   MIN_FROM_WIDTH = 15
   LOAD_MORE_THREAD_NUM = 20
 
-  HookManager.register "index-mode-size-widget", <<EOS
+  hook "index-mode-size-widget", <<EOS
 Generates the per-thread size widget for each thread.
 Variables:
   thread: The message thread to be formatted.
 EOS
 
-  HookManager.register "mark-as-spam", <<EOS
+  hook "mark-as-spam", <<EOS
 This hook is run when a thread is marked as spam
 Variables:
   thread: The message thread being marked as spam.
@@ -70,7 +71,7 @@ EOS
     initialize_threads # defines @ts and @ts_mutex
     update # defines @text and @lines
 
-    UpdateManager.register self
+    #UpdateManager.register self
 
     @save_thread_mutex = Mutex.new
 
@@ -89,8 +90,8 @@ EOS
 
   def reload
     drop_all_threads
-    UndoManager.clear
-    BufferManager.draw_screen
+    $undo.clear
+    $buffers.draw_screen
     load_threads :num => buffer.content_height
   end
 
@@ -101,18 +102,18 @@ EOS
     Redwood::reporting_thread("load messages for thread-view-mode") do
       num = t.size
       message = "Loading #{num.pluralize 'message body'}..."
-      BufferManager.say(message) do |sid|
+      $buffers.say(message) do |sid|
         t.each_with_index do |(m, *o), i|
           next unless m
-          BufferManager.say "#{message} (#{i}/#{num})", sid if t.size > 1
+          $buffers.say "#{message} (#{i}/#{num})", sid if t.size > 1
           m.load_from_source! 
         end
       end
       mode = ThreadViewMode.new t, @hidden_labels, self
-      BufferManager.spawn t.subj, mode
-      BufferManager.draw_screen
+      $buffers.spawn t.subj, mode
+      $buffers.draw_screen
       mode.jump_to_first_open
-      BufferManager.draw_screen # lame TODO: make this unnecessary
+      $buffers.draw_screen # lame TODO: make this unnecessary
       ## the first draw_screen is needed before topline and botline
       ## are set, and the second to show the cursor having moved
 
@@ -186,7 +187,7 @@ EOS
 
   def handle_added_update sender, m
     add_or_unhide m
-    BufferManager.draw_screen
+    $buffers.draw_screen
   end
 
   def handle_single_message_deleted_update sender, m
@@ -216,7 +217,7 @@ EOS
   end
 
   def undo
-    UndoManager.undo
+    $undo.undo
   end
 
   def update
@@ -235,9 +236,9 @@ EOS
     message, *crap = t.find { |m, *o| m.has_label? :draft }
     if message
       mode = ResumeMode.new message
-      BufferManager.spawn "Edit message", mode
+      $buffers.spawn "Edit message", mode
     else
-      BufferManager.flash "Not a draft message!"
+      $buffers.flash "Not a draft message!"
     end
   end
 
@@ -266,14 +267,14 @@ EOS
   def toggle_starred 
     t = cursor_thread or return
     undo = actually_toggle_starred t
-    UndoManager.register "toggling thread starred status", undo
+    $undo.register "toggling thread starred status", undo
     update_text_for_line curpos
     cursor_down
-    Index.save_thread t
+    #Index.save_thread t
   end
 
   def multi_toggle_starred threads
-    UndoManager.register "toggling #{threads.size.pluralize 'thread'} starred status",
+    $undo.register "toggling #{threads.size.pluralize 'thread'} starred status",
       threads.map { |t| actually_toggle_starred t }
     regen_text
     threads.each { |t| Index.save_thread t }
@@ -352,14 +353,14 @@ EOS
   def toggle_archived 
     t = cursor_thread or return
     undo = actually_toggle_archived t
-    UndoManager.register "deleting/undeleting thread #{t.first.id}", undo, lambda { update_text_for_line curpos }
+    $undo.register "deleting/undeleting thread #{t.first.id}", undo, lambda { update_text_for_line curpos }
     update_text_for_line curpos
     Index.save_thread t
   end
 
   def multi_toggle_archived threads
     undos = threads.map { |t| actually_toggle_archived t }
-    UndoManager.register "deleting/undeleting #{threads.size.pluralize 'thread'}", undos, lambda { regen_text }
+    $undo.register "deleting/undeleting #{threads.size.pluralize 'thread'}", undos, lambda { regen_text }
     regen_text
     threads.each { |t| Index.save_thread t }
   end
@@ -406,14 +407,14 @@ EOS
       jump_to_line n unless n >= topline && n < botline
       set_cursor_pos n
     else
-      BufferManager.flash "No new messages"
+      $buffers.flash "No new messages"
     end
   end
 
   def toggle_spam
     t = cursor_thread or return
     multi_toggle_spam [t]
-    HookManager.run("mark-as-spam", :thread => t)
+    $hooks.run("mark-as-spam", :thread => t)
   end
 
   ## both spam and deleted have the curious characteristic that you
@@ -425,7 +426,7 @@ EOS
   ## you also want them to disappear immediately.
   def multi_toggle_spam threads
     undos = threads.map { |t| actually_toggle_spammed t }
-    UndoManager.register "marking/unmarking  #{threads.size.pluralize 'thread'} as spam",
+    $undo.register "marking/unmarking  #{threads.size.pluralize 'thread'} as spam",
                          undos, lambda { regen_text }
     regen_text
     threads.each { |t| Index.save_thread t }
@@ -439,7 +440,7 @@ EOS
   ## see comment for multi_toggle_spam
   def multi_toggle_deleted threads
     undos = threads.map { |t| actually_toggle_deleted t }
-    UndoManager.register "deleting/undeleting #{threads.size.pluralize 'thread'}",
+    $undo.register "deleting/undeleting #{threads.size.pluralize 'thread'}",
                          undos, lambda { regen_text }
     regen_text
     threads.each { |t| Index.save_thread t }
@@ -452,7 +453,7 @@ EOS
 
   ## m-m-m-m-MULTI-KILL
   def multi_kill threads
-    UndoManager.register "killing #{threads.size.pluralize 'thread'}" do
+    $undo.register "killing #{threads.size.pluralize 'thread'}" do
       threads.each do |t|
         t.remove_label :killed
         add_or_unhide t.first
@@ -466,18 +467,18 @@ EOS
     end
 
     regen_text
-    BufferManager.flash "#{threads.size.pluralize 'thread'} killed."
+    $buffers.flash "#{threads.size.pluralize 'thread'} killed."
     threads.each { |t| Index.save_thread t }
   end
 
   def cleanup
-    UpdateManager.unregister self
+    #UpdateManager.unregister self
 
     if @load_thread
       @load_thread.kill 
-      BufferManager.clear @mbid if @mbid
+      $buffers.clear @mbid if @mbid
       sleep 0.1 # TODO: necessary?
-      BufferManager.erase_flash
+      $buffers.erase_flash
     end
     dirty_threads = @mutex.synchronize { (@threads + @hidden_threads.keys).select { |t| t.dirty? } }
     fail "dirty threads remain" unless dirty_threads.empty?
@@ -497,12 +498,12 @@ EOS
   end
 
   def tag_matching
-    query = BufferManager.ask :search, "tag threads matching (regex): "
+    query = $buffers.ask :search, "tag threads matching (regex): "
     return if query.nil? || query.empty?
     query = begin
       /#{query}/i
     rescue RegexpError => e
-      BufferManager.flash "error interpreting '#{query}': #{e.message}"
+      $buffers.flash "error interpreting '#{query}': #{e.message}"
       return
     end
     @mutex.synchronize { @threads.each { |t| @tags.tag t if thread_matches?(t, query) } }
@@ -520,14 +521,14 @@ EOS
 
     keepl, modifyl = thread.labels.partition { |t| speciall.member? t }
 
-    user_labels = BufferManager.ask_for_labels :label, "Labels for thread: ", modifyl, @hidden_labels
+    user_labels = $buffers.ask_for_labels :label, "Labels for thread: ", modifyl, @hidden_labels
     return unless user_labels
 
     thread.labels = Set.new(keepl) + user_labels
     user_labels.each { |l| LabelManager << l }
     update_text_for_line curpos
 
-    UndoManager.register "labeling thread" do
+    $undo.register "labeling thread" do
       thread.labels = old_labels
       update_text_for_line pos
       UpdateManager.relay self, :labeled, thread.first
@@ -538,13 +539,13 @@ EOS
   end
 
   def multi_edit_labels threads
-    user_labels = BufferManager.ask_for_labels :labels, "Add/remove labels (use -label to remove): ", [], @hidden_labels
+    user_labels = $buffers.ask_for_labels :labels, "Add/remove labels (use -label to remove): ", [], @hidden_labels
     return unless user_labels
 
     user_labels.map! { |l| (l.to_s =~ /^-/)? [l.to_s.gsub(/^-?/, '').to_sym, true] : [l, false] }
     hl = user_labels.select { |(l,_)| @hidden_labels.member? l }
     unless hl.empty?
-      BufferManager.flash "'#{hl}' is a reserved label!"
+      $buffers.flash "'#{hl}' is a reserved label!"
       return
     end
 
@@ -564,7 +565,7 @@ EOS
 
     regen_text
 
-    UndoManager.register "labeling #{threads.size.pluralize 'thread'}" do
+    $undo.register "labeling #{threads.size.pluralize 'thread'}" do
       threads.zip(old_labels).map do |t, old_labels|
         t.labels = old_labels
         UpdateManager.relay self, :labeled, t.first
@@ -581,7 +582,7 @@ EOS
     return if m.nil? # probably won't happen
     m.load_from_source!
     mode = ReplyMode.new m, type_arg
-    BufferManager.spawn "Reply to #{m.subj}", mode
+    $buffers.spawn "Reply to #{m.subj}", mode
   end
 
   def reply_all; reply :all; end
@@ -596,17 +597,19 @@ EOS
 
   def load_n_threads_background n=LOAD_MORE_THREAD_NUM, opts={}
     return if @load_thread # todo: wrap in mutex
+=begin
     @load_thread = Redwood::reporting_thread("load threads for thread-index-mode") do
       num = load_n_threads n, opts
       opts[:when_done].call(num) if opts[:when_done]
       @load_thread = nil
     end
+=end
   end
 
   ## TODO: figure out @ts_mutex in this method
   def load_n_threads n=LOAD_MORE_THREAD_NUM, opts={}
     @interrupt_search = false
-    @mbid = BufferManager.say "Searching for threads..."
+    @mbid = $buffers.say "Searching for threads..."
 
     ts_to_load = n
     ts_to_load = ts_to_load + @ts.size unless n == -1 # -1 means all threads
@@ -615,9 +618,9 @@ EOS
     last_update = Time.now
     @ts.load_n_threads(ts_to_load, opts) do |i|
       if (Time.now - last_update) >= 0.25
-        BufferManager.say "Loaded #{i.pluralize 'thread'}...", @mbid
+        $buffers.say "Loaded #{i.pluralize 'thread'}...", @mbid
         update
-        BufferManager.draw_screen
+        $buffers.draw_screen
         last_update = Time.now
       end
       ::Thread.pass
@@ -626,9 +629,9 @@ EOS
     @ts.threads.each { |th| th.labels.each { |l| LabelManager << l } }
 
     update
-    BufferManager.clear @mbid
+    $buffers.clear @mbid
     @mbid = nil
-    BufferManager.draw_screen
+    $buffers.draw_screen
     @ts.size - orig_size
   end
   ignore_concurrent_calls :load_n_threads
@@ -660,9 +663,9 @@ EOS
       opts[:when_done].call(num) if opts[:when_done]
 
       if num > 0
-        BufferManager.flash "Found #{num.pluralize 'thread'}."
+        $buffers.flash "Found #{num.pluralize 'thread'}."
       else
-        BufferManager.flash "No matches."
+        $buffers.flash "No matches."
       end
     end)})
 
@@ -702,7 +705,7 @@ protected
   end
 
   def size_widget_for_thread t
-    HookManager.run("index-mode-size-widget", :thread => t) || default_size_widget_for(t)
+    $hooks.run("index-mode-size-widget", :thread => t) || default_size_widget_for(t)
   end
 
   def cursor_thread; @mutex.synchronize { @threads[curpos] }; end
@@ -768,7 +771,7 @@ protected
     result = []
     authors.each do |a|
       break if limit && result.size >= limit
-      name = if AccountManager.is_account?(a)
+      name = if $accounts.is_account?(a)
         "me"
       elsif t.authors.size == 1
         a.mediumname
@@ -820,8 +823,8 @@ protected
       from << [(newness ? :index_new_color : (starred ? :index_starred_color : :index_old_color)), abbrev]
     end
 
-    dp = t.direct_participants.any? { |p| AccountManager.is_account? p }
-    p = dp || t.participants.any? { |p| AccountManager.is_account? p }
+    dp = t.direct_participants.any? { |p| $accounts.is_account? p }
+    p = dp || t.participants.any? { |p| $accounts.is_account? p }
 
     subj_color =
       if t.has_label?(:draft)
@@ -874,10 +877,11 @@ private
   end
 
   def initialize_threads
-    @ts = ThreadSet.new Index.instance, $config[:thread_by_subject]
+    @ts = ThreadSet.new $config[:thread_by_subject]
     @ts_mutex = Mutex.new
     @hidden_threads = {}
   end
 end
 
+end
 end

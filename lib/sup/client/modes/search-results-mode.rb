@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class SearchResultsMode < ThreadIndexMode
   def initialize query
@@ -12,7 +13,7 @@ class SearchResultsMode < ThreadIndexMode
   end
 
   def refine_search
-    text = BufferManager.ask :search, "refine query: ", (@query[:text] + " ")
+    text = $buffers.ask :search, "refine query: ", (@query[:text] + " ")
     return unless text && text !~ /^\s*$/
     SearchResultsMode.spawn_from_query text
   end
@@ -29,12 +30,13 @@ class SearchResultsMode < ThreadIndexMode
       return unless query
       short_text = text.length < 20 ? text : text[0 ... 20] + "..."
       mode = SearchResultsMode.new query
-      BufferManager.spawn "search: \"#{short_text}\"", mode
+      $buffers.spawn "search: \"#{short_text}\"", mode
       mode.load_threads :num => mode.buffer.content_height
     rescue Index::ParseError => e
-      BufferManager.flash "Problem: #{e.message}!"
+      $buffers.flash "Problem: #{e.message}!"
     end
   end
 end
 
+end
 end

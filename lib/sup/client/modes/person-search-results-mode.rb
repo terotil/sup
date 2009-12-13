@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class PersonSearchResultsMode < ThreadIndexMode
   def initialize people
@@ -10,4 +11,5 @@ class PersonSearchResultsMode < ThreadIndexMode
   def is_relevant? m; @people.any? { |p| m.from == p }; end
 end
 
+end
 end

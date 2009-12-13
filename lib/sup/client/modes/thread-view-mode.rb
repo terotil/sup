@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class ThreadViewMode < LineCursorMode
   ## this holds all info we need to lay out a message
@@ -14,7 +15,7 @@ class ThreadViewMode < LineCursorMode
   DATE_FORMAT = "%B %e %Y %l:%M%p"
   INDENT_SPACES = 2 # how many spaces to indent child messages
 
-  HookManager.register "detailed-headers", <<EOS
+  hook "detailed-headers", <<EOS
 Add or remove headers from the detailed header display of a message.
 Variables:
   message: The message whose headers are to be formatted.
@@ -24,7 +25,7 @@ Return value:
   None. The variable 'headers' should be modified in place.
 EOS
 
-  HookManager.register "bounce-command", <<EOS
+  hook "bounce-command", <<EOS
 Determines the command used to bounce a message.
 Variables:
       from: The From header of the message being bounced
@@ -149,14 +150,14 @@ EOS
 
   def show_header
     m = @message_lines[curpos] or return
-    BufferManager.spawn_unless_exists("Full header for #{m.id}") do
+    $buffers.spawn_unless_exists("Full header for #{m.id}") do
       TextMode.new m.raw_header.ascii
     end
   end
 
   def show_message
     m = @message_lines[curpos] or return
-    BufferManager.spawn_unless_exists("Raw message for #{m.id}") do
+    $buffers.spawn_unless_exists("Raw message for #{m.id}") do
       TextMode.new m.raw_message.ascii
     end
   end
@@ -170,7 +171,7 @@ EOS
   def reply type_arg=nil
     m = @message_lines[curpos] or return
     mode = ReplyMode.new m, type_arg
-    BufferManager.spawn "Reply to #{m.subj}", mode
+    $buffers.spawn "Reply to #{m.subj}", mode
   end
 
   def reply_all; reply :all; end
@@ -178,18 +179,18 @@ EOS
   def subscribe_to_list
     m = @message_lines[curpos] or return
     if m.list_subscribe && m.list_subscribe =~ /<mailto:(.*?)(\?subject=(.*?))?>/
-      ComposeMode.spawn_nicely :from => AccountManager.account_for(m.recipient_email), :to => [Person.from_address($1)], :subj => ($3 || "subscribe")
+      ComposeMode.spawn_nicely :from => $accounts.account_for(m.recipient_email), :to => [Person.from_address($1)], :subj => ($3 || "subscribe")
     else
-      BufferManager.flash "Can't find List-Subscribe header for this message."
+      $buffers.flash "Can't find List-Subscribe header for this message."
     end
   end
 
   def unsubscribe_from_list
     m = @message_lines[curpos] or return
     if m.list_unsubscribe && m.list_unsubscribe =~ /<mailto:(.*?)(\?subject=(.*?))?>/
-      ComposeMode.spawn_nicely :from => AccountManager.account_for(m.recipient_email), :to => [Person.from_address($1)], :subj => ($3 || "unsubscribe")
+      ComposeMode.spawn_nicely :from => $accounts.account_for(m.recipient_email), :to => [Person.from_address($1)], :subj => ($3 || "unsubscribe")
     else
-      BufferManager.flash "Can't find List-Unsubscribe header for this message."
+      $buffers.flash "Can't find List-Unsubscribe header for this message."
     end
   end
 
@@ -203,18 +204,18 @@ EOS
 
   def bounce
     m = @message_lines[curpos] or return
-    to = BufferManager.ask_for_contacts(:people, "Bounce To: ") or return
+    to = $buffers.ask_for_contacts(:people, "Bounce To: ") or return
 
-    defcmd = AccountManager.default_account.bounce_sendmail
+    defcmd = $accounts.default_account.bounce_sendmail
 
-    cmd = case (hookcmd = HookManager.run "bounce-command", :from => m.from, :to => to)
+    cmd = case (hookcmd = $hooks.run "bounce-command", :from => m.from, :to => to)
           when nil, /^$/ then defcmd
           else hookcmd
           end + ' ' + to.map { |t| t.email }.join(' ')
 
     bt = to.size > 1 ? "#{to.size} recipients" : to.to_s
 
-    if BufferManager.ask_yes_or_no "Really bounce to #{bt}?"
+    if $buffers.ask_yes_or_no "Really bounce to #{bt}?"
       debug "bounce command: #{cmd}"
       begin
         IO.popen(cmd, 'w') do |sm|
@@ -223,7 +224,7 @@ EOS
         raise SendmailCommandFailed, "Couldn't execute #{cmd}" unless $? == 0
       rescue SystemCallError, SendmailCommandFailed => e
         warn "problem sending mail: #{e.message}"
-        BufferManager.flash "Problem sending mail: #{e.message}"
+        $buffers.flash "Problem sending mail: #{e.message}"
       end
     end
   end
@@ -238,7 +239,7 @@ EOS
   def search
     p = @person_lines[curpos] or return
     mode = PersonSearchResultsMode.new [p]
-    BufferManager.spawn "Search for #{p.name}", mode
+    $buffers.spawn "Search for #{p.name}", mode
     mode.load_threads :num => mode.buffer.content_height
   end    
 
@@ -254,14 +255,14 @@ EOS
   def edit_labels
     old_labels = @thread.labels
     reserved_labels = old_labels.select { |l| LabelManager::RESERVED_LABELS.include? l }
-    new_labels = BufferManager.ask_for_labels :label, "Labels for thread: ", @thread.labels
+    new_labels = $buffers.ask_for_labels :label, "Labels for thread: ", @thread.labels
 
     return unless new_labels
     @thread.labels = Set.new(reserved_labels) + new_labels
     new_labels.each { |l| LabelManager << l }
     update
     UpdateManager.relay self, :labeled, @thread.first
-    UndoManager.register "labeling thread" do
+    $undo.register "labeling thread" do
       @thread.labels = old_labels
       UpdateManager.relay self, :labeled, @thread.first
     end
@@ -323,7 +324,7 @@ EOS
   def edit_as_new
     m = @message_lines[curpos] or return
     mode = ComposeMode.new(:body => m.quotable_body_lines, :to => m.to, :cc => m.cc, :subj => m.subj, :bcc => m.bcc, :refs => m.refs, :replytos => m.replytos)
-    BufferManager.spawn "edit as new", mode
+    $buffers.spawn "edit as new", mode
     mode.edit_message
   end
 
@@ -332,11 +333,11 @@ EOS
     case chunk
     when Chunk::Attachment
       default_dir = File.join(($config[:default_attachment_save_dir] || "."), chunk.filename)
-      fn = BufferManager.ask_for_filename :filename, "Save attachment to file: ", default_dir
+      fn = $buffers.ask_for_filename :filename, "Save attachment to file: ", default_dir
       save_to_file(fn) { |f| f.print chunk.raw_content } if fn
     else
       m = @message_lines[curpos]
-      fn = BufferManager.ask_for_filename :filename, "Save message to file: "
+      fn = $buffers.ask_for_filename :filename, "Save message to file: "
       return unless fn
       save_to_file(fn) do |f|
         m.each_raw_message_line { |l| f.print l }
@@ -347,7 +348,7 @@ EOS
   def save_all_to_disk
     m = @message_lines[curpos] or return
     default_dir = ($config[:default_attachment_save_dir] || ".")
-    folder = BufferManager.ask_for_filename :filename, "Save all attachments to folder: ", default_dir, true
+    folder = $buffers.ask_for_filename :filename, "Save all attachments to folder: ", default_dir, true
     return unless folder
 
     num = 0
@@ -360,12 +361,12 @@ EOS
     end
 
     if num == 0
-      BufferManager.flash "Didn't find any attachments!"
+      $buffers.flash "Didn't find any attachments!"
     else
       if num_errors == 0
-        BufferManager.flash "Wrote #{num.pluralize 'attachment'} to #{folder}."
+        $buffers.flash "Wrote #{num.pluralize 'attachment'} to #{folder}."
       else
-        BufferManager.flash "Wrote #{(num - num_errors).pluralize 'attachment'} to #{folder}; couldn't write #{num_errors} of them (see log)."
+        $buffers.flash "Wrote #{(num - num_errors).pluralize 'attachment'} to #{folder}; couldn't write #{num_errors} of them (see log)."
       end
     end
   end
@@ -374,11 +375,11 @@ EOS
     m = @message_lines[curpos] or return
     if m.is_draft?
       mode = ResumeMode.new m
-      BufferManager.spawn "Edit message", mode
-      BufferManager.kill_buffer self.buffer
+      $buffers.spawn "Edit message", mode
+      $buffers.kill_buffer self.buffer
       mode.edit_message
     else
-      BufferManager.flash "Not a draft message!"
+      $buffers.flash "Not a draft message!"
     end
   end
 
@@ -386,11 +387,11 @@ EOS
     m = @message_lines[curpos] or return
     if m.is_draft?
       mode = ResumeMode.new m
-      BufferManager.spawn "Send message", mode
-      BufferManager.kill_buffer self.buffer
+      $buffers.spawn "Send message", mode
+      $buffers.kill_buffer self.buffer
       mode.send_message
     else
-      BufferManager.flash "Not a draft message!"
+      $buffers.flash "Not a draft message!"
     end
   end
 
@@ -507,7 +508,7 @@ EOS
     dispatch op do
       @thread.remove_label :inbox
       UpdateManager.relay self, :archived, @thread.first
-      UndoManager.register "archiving 1 thread" do
+      $undo.register "archiving 1 thread" do
         @thread.apply_label :inbox
         UpdateManager.relay self, :unarchived, @thread.first
       end
@@ -519,7 +520,7 @@ EOS
     dispatch op do
       @thread.apply_label :spam
       UpdateManager.relay self, :spammed, @thread.first
-      UndoManager.register "marking 1 thread as spam" do
+      $undo.register "marking 1 thread as spam" do
         @thread.remove_label :spam
         UpdateManager.relay self, :unspammed, @thread.first
       end
@@ -531,7 +532,7 @@ EOS
     dispatch op do
       @thread.apply_label :deleted
       UpdateManager.relay self, :deleted, @thread.first
-      UndoManager.register "deleting 1 thread" do
+      $undo.register "deleting 1 thread" do
         @thread.remove_label :deleted
         UpdateManager.relay self, :undeleted, @thread.first
       end
@@ -557,7 +558,7 @@ EOS
 
     l = lambda do
       yield if block_given?
-      BufferManager.kill_buffer_safely buffer
+      $buffers.kill_buffer_safely buffer
     end
 
     case op
@@ -580,7 +581,7 @@ EOS
 
     return unless chunk || message
 
-    command = BufferManager.ask(:shell, "pipe command: ")
+    command = $buffers.ask(:shell, "pipe command: ")
     return if command.nil? || command.empty?
 
     output = pipe_to_process(command) do |stream|
@@ -592,9 +593,9 @@ EOS
     end
 
     if output
-      BufferManager.spawn "Output of '#{command}'", TextMode.new(output)
+      $buffers.spawn "Output of '#{command}'", TextMode.new(output)
     else
-      BufferManager.flash "'#{command}' done!"
+      $buffers.flash "'#{command}' done!"
     end
   end
 
@@ -735,7 +736,7 @@ private
         headers["In reply to"] = "#{parent.from.mediumname}'s message of #{parent.date.strftime DATE_FORMAT}"
       end
 
-      HookManager.run "detailed-headers", :message => m, :headers => headers
+      $hooks.run "detailed-headers", :message => m, :headers => headers
       
       from_line + (addressee_lines + headers.map { |k, v| "   #{k}: #{v}" }).map { |l| [[color, prefix + "  " + l]] }
     end
@@ -751,7 +752,7 @@ private
   end
 
   def format_person p
-    p.longname + (ContactManager.is_aliased_contact?(p) ? " (#{ContactManager.alias_for p})" : "")
+    p.longname + ($contacts.is_aliased_contact?(p) ? " (#{$contacts.alias_for p})" : "")
   end
 
   ## todo: check arguments on this overly complex function
@@ -784,15 +785,16 @@ private
   end
 
   def view chunk
-    BufferManager.flash "viewing #{chunk.content_type} attachment..."
+    $buffers.flash "viewing #{chunk.content_type} attachment..."
     success = chunk.view!
-    BufferManager.erase_flash
-    BufferManager.completely_redraw_screen
+    $buffers.erase_flash
+    $buffers.completely_redraw_screen
     unless success
-      BufferManager.spawn "Attachment: #{chunk.filename}", TextMode.new(chunk.to_s, chunk.filename)
-      BufferManager.flash "Couldn't execute view command, viewing as text."
+      $buffers.spawn "Attachment: #{chunk.filename}", TextMode.new(chunk.to_s, chunk.filename)
+      $buffers.flash "Couldn't execute view command, viewing as text."
     end
   end
 end
 
+end
 end

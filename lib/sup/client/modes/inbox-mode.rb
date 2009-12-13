@@ -2,6 +2,7 @@
 require 'sup'
 
 module Redwood
+module Client
 
 class InboxMode < ThreadIndexMode
   register_keymap do |k|
@@ -35,7 +36,7 @@ class InboxMode < ThreadIndexMode
     return unless cursor_thread
     thread = cursor_thread # to make sure lambda only knows about 'old' cursor_thread
 
-    UndoManager.register "archiving thread" do
+    $undo.register "archiving thread" do
       thread.apply_label :inbox
       add_or_unhide thread.first
     end
@@ -43,11 +44,11 @@ class InboxMode < ThreadIndexMode
     cursor_thread.remove_label :inbox
     hide_thread cursor_thread
     regen_text
-    Index.save_thread thread
+    #Index.save_thread thread
   end
 
   def multi_archive threads
-    UndoManager.register "archiving #{threads.size.pluralize 'thread'}" do
+    $undo.register "archiving #{threads.size.pluralize 'thread'}" do
       threads.map do |t|
         t.apply_label :inbox
         add_or_unhide t.first
@@ -67,7 +68,7 @@ class InboxMode < ThreadIndexMode
     return unless cursor_thread
     thread = cursor_thread # to make sure lambda only knows about 'old' cursor_thread
 
-    UndoManager.register "reading and archiving thread" do
+    $undo.register "reading and archiving thread" do
       thread.apply_label :inbox
       thread.apply_label :unread
       add_or_unhide thread.first
@@ -90,7 +91,7 @@ class InboxMode < ThreadIndexMode
     end
     regen_text
 
-    UndoManager.register "reading and archiving #{threads.size.pluralize 'thread'}" do
+    $undo.register "reading and archiving #{threads.size.pluralize 'thread'}" do
       threads.zip(old_labels).each do |t, l|
         t.labels = l
         add_or_unhide t.first
@@ -111,9 +112,12 @@ class InboxMode < ThreadIndexMode
     regen_text
   end
 
+=begin
   def status
     super + "    #{Index.size} messages in index"
   end
+=end
 end
 
+end
 end

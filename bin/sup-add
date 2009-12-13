@@ -6,13 +6,12 @@ require 'rubygems'
 require 'highline/import'
 require 'trollop'
 require "sup"
+require 'sup/client'
 require 'sup/util'
 require 'sup/source'
 require 'sup/source/mbox'
 require 'sup/source/maildir'
 require 'sup/client/config'
-
-require 'sup/client'
 
 require 'sup/logger'
 #Redwood::Logger.init.add_sink $stderr
@@ -55,9 +54,6 @@ end
 
 Trollop::die "require one or more sources" if ARGV.empty?
 
-Redwood::SourceManager.init
-Redwood::SourceManager.load_sources
-
 ## for sources that require login information, prompt the user for
 ## that. also provide a list of previously-defined login info to
 ## choose from, if any.
@@ -93,12 +89,12 @@ end
 $terminal.wrap_at = :auto
 
 begin
-  Redwood::SourceManager.load_sources
+  Redwood::Client.start
 
   ARGV.each do |uri|
     labels = $opts[:labels] ? $opts[:labels].split(/\s*,\s*/).uniq : []
 
-    if !$opts[:force_new] && Redwood::SourceManager.source_for(uri)
+    if !$opts[:force_new] && $sources.source_for(uri)
       say "Already know about #{uri}; skipping."
       next
     end
@@ -108,7 +104,7 @@ begin
     source = 
       case parsed_uri.scheme
       when "imap", "imaps"
-        username, password = get_login_info uri, Redwood::SourceManager.sources
+        username, password = get_login_info uri, $sources.sources
         Redwood::Source::IMAP.new uri, username, password, nil, !$opts[:unusual], $opts[:archive], labels
       when "maildir"
         Redwood::Source::Maildir.new uri, nil, !$opts[:unusual], $opts[:archive], labels
@@ -120,8 +116,8 @@ begin
         Trollop::die "Unknown source type #{parsed_uri.scheme.inspect}"      
       end
     say "Adding #{source}..."
-    Redwood::SourceManager.add_source source
-    Redwood::SourceManager.save_sources
+    $sources.add_source source
+    $sources.save_sources
   end
 ensure
 end

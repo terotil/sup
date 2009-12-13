@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class LabelListMode < LineCursorMode
   register_keymap do |k|
@@ -9,7 +10,7 @@ class LabelListMode < LineCursorMode
     k.add :toggle_show_unread_only, "Toggle between showing all labels and those with unread mail", 'u'
   end
 
-  HookManager.register "label-list-filter", <<EOS
+  hook "label-list-filter", <<EOS
 Filter the label list, typically to sort.
 Variables:
   counted: an array of counted labels.
@@ -17,7 +18,7 @@ Return value:
   An array of counted labels with sort_by output structure.
 EOS
 
-  HookManager.register "label-list-format", <<EOS
+  hook "label-list-format", <<EOS
 Create the sprintf format string for label-list-mode.
 Variables:
   width: the maximum label width
@@ -51,7 +52,7 @@ EOS
       jump_to_line n unless n >= topline && n < botline
       set_cursor_pos n
     else
-      BufferManager.flash "No labels messages with unread messages."
+      $buffers.flash "No labels messages with unread messages."
     end
   end
 
@@ -86,8 +87,8 @@ protected
       [label, string, total, unread]
     end
 
-    if HookManager.enabled? "label-list-filter"
-      counts = HookManager.run "label-list-filter", :counted => counted
+    if $hooks.enabled? "label-list-filter"
+      counts = $hooks.run "label-list-filter", :counted => counted
     else
       counts = counted.sort_by { |l, s, t, u| s.downcase }
     end
@@ -115,7 +116,7 @@ protected
         next
       end
 
-      fmt = HookManager.run "label-list-format", :width => width, :tmax => tmax, :umax => umax
+      fmt = $hooks.run "label-list-format", :width => width, :tmax => tmax, :umax => umax
       if !fmt
         fmt = "%#{width + 1}s %5d %s, %5d unread"
       end
@@ -126,7 +127,7 @@ protected
       yield i if block_given?
     end.compact
 
-    BufferManager.flash "No labels with unread messages!" if counts.empty? && @unread_only
+    $buffers.flash "No labels with unread messages!" if counts.empty? && @unread_only
   end
 
   def select_label
@@ -136,4 +137,5 @@ protected
   end
 end
 
+end
 end

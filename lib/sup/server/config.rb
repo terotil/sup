@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'sup/util/yaml_config'
 
 module Redwood::Server

@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class Account < Person
   attr_accessor :sendmail, :signature
@@ -25,8 +26,6 @@ class Account < Person
 end
 
 class AccountManager
-  include Singleton
-
   attr_accessor :default_account
 
   def initialize accounts
@@ -80,4 +79,5 @@ class AccountManager
   end
 end
 
+end
 end

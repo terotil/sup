@@ -4,6 +4,7 @@ module Curses
 end
 
 module Redwood
+module Client
 
 class Colormap
   @@instance = nil
@@ -155,9 +156,9 @@ class Colormap
   ## Try to use the user defined colors, in case of an error fall back
   ## to the default ones.
   def populate_colormap
-    user_colors = if File.exists? Redwood::COLOR_FN
-      debug "loading user colors from #{Redwood::COLOR_FN}"
-      Redwood::load_yaml_obj Redwood::COLOR_FN
+    user_colors = if File.exists? Redwood::Client::COLOR_FN
+      debug "loading user colors from #{Redwood::Client::COLOR_FN}"
+      Redwood::load_yaml_obj Redwood::Client::COLOR_FN
     end
 
     error = nil
@@ -201,7 +202,7 @@ class Colormap
       add symbol, fg, bg, attrs
     end
 
-    BufferManager.flash error if error
+    $buffers.flash error if error
   end
 
   def self.instance; @@instance; end
@@ -211,4 +212,5 @@ class Colormap
   end
 end
 
+end
 end

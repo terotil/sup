@@ -9,6 +9,7 @@ PATTERN_UTF8 = '[\xc0-\xdf][\x80-\xbf]|[\xe0-\xef][\x80-\xbf][\x80-\xbf]'
 RE_UTF8 = Regexp.new(PATTERN_UTF8, 0, 'n')
 
 module Redwood
+module Client
 
 class SendmailCommandFailed < StandardError; end
 
@@ -19,7 +20,7 @@ class EditMessageMode < LineCursorMode
   MULTI_HEADERS = %w(To Cc Bcc)
   NON_EDITABLE_HEADERS = %w(Message-id Date)
 
-  HookManager.register "signature", <<EOS
+  hook "signature", <<EOS
 Generates a message signature.
 Variables:
       header: an object that supports string-to-string hashtable-style access
@@ -31,7 +32,7 @@ Return value:
   use the default signature, or :none for no signature.
 EOS
 
-  HookManager.register "before-edit", <<EOS
+  hook "before-edit", <<EOS
 Modifies message body and headers before editing a new message. Variables
 should be modified in place.
 Variables:
@@ -92,7 +93,7 @@ EOS
       end
     add_selector @crypto_selector if @crypto_selector
     
-    HookManager.run "before-edit", :header => @header, :body => @body
+    $hooks.run "before-edit", :header => @header, :body => @body
 
     super opts
     regen_text
@@ -140,7 +141,7 @@ EOS
     editor = $config[:editor] || ENV['EDITOR'] || "/usr/bin/vi"
 
     mtime = File.mtime @file.path
-    BufferManager.shell_out "#{editor} #{@file.path}"
+    $buffers.shell_out "#{editor} #{@file.path}"
     @edited = true if File.mtime(@file.path) > mtime
 
     return @edited unless @edited
@@ -154,13 +155,13 @@ EOS
   end
 
   def killable?
-    !edited? || BufferManager.ask_yes_or_no("Discard message?")
+    !edited? || $buffers.ask_yes_or_no("Discard message?")
   end
 
   def unsaved?; edited? end
 
   def attach_file
-    fn = BufferManager.ask_for_filename :attachment, "File name (enter for browser): "
+    fn = $buffers.ask_for_filename :attachment, "File name (enter for browser): "
     return unless fn
     begin
       Dir[fn].each do |f|
@@ -169,13 +170,13 @@ EOS
       end
       update
     rescue SystemCallError => e
-      BufferManager.flash "Can't read #{fn}: #{e.message}"
+      $buffers.flash "Can't read #{fn}: #{e.message}"
     end
   end
 
   def delete_attachment
     i = curpos - @attachment_lines_offset - DECORATION_LINES - 1
-    if i >= 0 && i < @attachments.size && BufferManager.ask_yes_or_no("Delete attachment #{@attachment_names[i]}?")
+    if i >= 0 && i < @attachments.size && $buffers.ask_yes_or_no("Delete attachment #{@attachment_names[i]}?")
       @attachments.delete_at i
       @attachment_names.delete_at i
       update
@@ -264,7 +265,7 @@ protected
   def parse_header k, v
     if MULTI_HEADERS.include?(k)
       v.split_on_commas.map do |name|
-        (p = ContactManager.contact_for(name)) && p.full_address || name
+        (p = $contacts.contact_for(name)) && p.full_address || name
       end
     else
       v
@@ -304,40 +305,41 @@ protected
   end
 
   def send_message
-    return false if !edited? && !BufferManager.ask_yes_or_no("Message unedited. Really send?")
-    return false if $config[:confirm_no_attachments] && mentions_attachments? && @attachments.size == 0 && !BufferManager.ask_yes_or_no("You haven't added any attachments. Really send?")#" stupid ruby-mode
-    return false if $config[:confirm_top_posting] && top_posting? && !BufferManager.ask_yes_or_no("You're top-posting. That makes you a bad person. Really send?") #" stupid ruby-mode
+    return false if !edited? && !$buffers.ask_yes_or_no("Message unedited. Really send?")
+    return false if $config[:confirm_no_attachments] && mentions_attachments? && @attachments.size == 0 && !$buffers.ask_yes_or_no("You haven't added any attachments. Really send?")#" stupid ruby-mode
+    return false if $config[:confirm_top_posting] && top_posting? && !$buffers.ask_yes_or_no("You're top-posting. That makes you a bad person. Really send?") #" stupid ruby-mode
 
     from_email = 
       if @header["From"] =~ /<?(\S+@(\S+?))>?$/
         $1
       else
-        AccountManager.default_account.email
+        $accounts.default_account.email
       end
 
-    acct = AccountManager.account_for(from_email) || AccountManager.default_account
-    BufferManager.flash "Sending..."
+    acct = $accounts.account_for(from_email) || $accounts.default_account
+    $buffers.flash "Sending..."
 
     begin
       date = Time.now
       m = build_message date
       IO.popen(acct.sendmail, "w") { |p| p.puts m }
       raise SendmailCommandFailed, "Couldn't execute #{acct.sendmail}" unless $? == 0
-      SentManager.write_sent_message(date, from_email) { |f| f.puts sanitize_body(m.to_s) }
-      BufferManager.kill_buffer buffer
-      BufferManager.flash "Message sent!"
+      #SentManager.write_sent_message(date, from_email) { |f| f.puts sanitize_body(m.to_s) }
+      $buffers.kill_buffer buffer
+      $buffers.flash "Message sent!"
       true
     rescue SystemCallError, SendmailCommandFailed, CryptoManager::Error => e
       warn "Problem sending mail: #{e.message}"
-      BufferManager.flash "Problem sending mail: #{e.message}"
+      $buffers.flash "Problem sending mail: #{e.message}"
       false
     end
   end
 
   def save_as_draft
+    fail
     DraftManager.write_draft { |f| write_message f, false }
-    BufferManager.kill_buffer buffer
-    BufferManager.flash "Saved for later editing."
+    $buffers.kill_buffer buffer
+    $buffers.flash "Saved for later editing."
   end
 
   def build_message date
@@ -415,7 +417,7 @@ protected
   def edit_field field
     case field
     when "Subject"
-      text = BufferManager.ask :subject, "Subject: ", @header[field]
+      text = $buffers.ask :subject, "Subject: ", @header[field]
        if text
          @header[field] = parse_header field, text
          update
@@ -429,7 +431,7 @@ protected
           @header[field]
         end
 
-      contacts = BufferManager.ask_for_contacts :people, "#{field}: ", default
+      contacts = $buffers.ask_for_contacts :people, "#{field}: ", default
       if contacts
         text = contacts.map { |s| s.full_address }.join(", ")
         @header[field] = parse_header field, text
@@ -457,15 +459,15 @@ private
     from_email = p && p.email
 
     ## first run the hook
-    hook_sig = HookManager.run "signature", :header => @header, :from_email => from_email
+    hook_sig = $hooks.run "signature", :header => @header, :from_email => from_email
 
     return [] if hook_sig == :none
     return ["", "-- "] + hook_sig.split("\n") if hook_sig
 
     ## no hook, do default signature generation based on config.yaml
     return [] unless from_email
-    sigfn = (AccountManager.account_for(from_email) || 
-             AccountManager.default_account).signature
+    sigfn = ($accounts.account_for(from_email) || 
+             $accounts.default_account).signature
 
     if sigfn && File.exists?(sigfn)
       ["", "-- "] + File.readlines(sigfn).map { |l| l.chomp }
@@ -475,4 +477,5 @@ private
   end
 end
 
+end
 end

@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class ScrollMode < Mode
   ## we define topline and botline as the top and bottom lines of any
@@ -28,7 +29,7 @@ class ScrollMode < Mode
     k.add :jump_to_end, "Jump to bottom", :end, '$', '0'
     k.add :jump_to_left, "Jump to the left", '['
     k.add :search_in_buffer, "Search in current buffer", '/'
-    k.add :continue_search_in_buffer, "Jump to next search occurrence in buffer", BufferManager::CONTINUE_IN_BUFFER_SEARCH_KEY
+    k.add :continue_search_in_buffer, "Jump to next search occurrence in buffer", Redwood::Client::BufferManager::CONTINUE_IN_BUFFER_SEARCH_KEY
   end
 
   def initialize opts={}
@@ -62,7 +63,7 @@ class ScrollMode < Mode
 
   def continue_search_in_buffer
     unless @search_query
-      BufferManager.flash "No current search!"
+      $buffers.flash "No current search!"
       return
     end
 
@@ -70,19 +71,19 @@ class ScrollMode < Mode
     line, col = find_text @search_query, start
     if line.nil? && (start > 0)
       line, col = find_text @search_query, 0
-      BufferManager.flash "Search wrapped to top!" if line
+      $buffers.flash "Search wrapped to top!" if line
     end
     if line
       @search_line = line + 1
       search_goto_pos line, col, col + @search_query.display_length
       buffer.mark_dirty
     else
-      BufferManager.flash "Not found!"
+      $buffers.flash "Not found!"
     end
   end
 
   def search_in_buffer
-    query = BufferManager.ask :search, "search in buffer: "
+    query = $buffers.ask :search, "search in buffer: "
     return if query.nil? || query.empty?
     @search_query = Regexp.escape query
     continue_search_in_buffer
@@ -248,4 +249,4 @@ protected
 end
 
 end
-
+end

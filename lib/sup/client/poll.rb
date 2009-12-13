@@ -5,21 +5,19 @@ require 'sup/message'
 module Redwood
 
 class PollManager
-  include Singleton
 
-=begin
-  HookManager.register "before-add-message", <<EOS
+  hook "before-add-message", <<EOS
 Executes immediately before a message is added to the index.
 Variables:
   message: the new message
 EOS
 
-  HookManager.register "before-poll", <<EOS
+  hook "before-poll", <<EOS
 Executes immediately before a poll for new messages commences.
 No variables.
 EOS
 
-  HookManager.register "after-poll", <<EOS
+  hook "after-poll", <<EOS
 Executes immediately after a poll for new messages completes.
 Variables:
                    num: the total number of new messages added in this poll
@@ -30,7 +28,6 @@ num_inbox_total_unread: the total number of unread messages in the inbox
    from_and_subj_inbox: an array of (from email address, subject) pairs for
                         only those messages appearing in the inbox
 EOS
-=end
 
   DELAY = 300
 
@@ -45,7 +42,7 @@ EOS
 
   def poll_with_sources
     @mode ||= PollMode.new
-    HookManager.run "before-poll"
+    $hooks.run "before-poll"
 
     BufferManager.flash "Polling for new messages..."
     num, numi, from_and_subj, from_and_subj_inbox, loaded_labels = @mode.poll
@@ -55,7 +52,7 @@ EOS
       BufferManager.flash "No new messages." 
     end
 
-    HookManager.run "after-poll", :num => num, :num_inbox => numi, :from_and_subj => from_and_subj, :from_and_subj_inbox => from_and_subj_inbox, :num_inbox_total_unread => lambda { Index.num_results_for :labels => [:inbox, :unread] }
+    $hooks.run "after-poll", :num => num, :num_inbox => numi, :from_and_subj => from_and_subj, :from_and_subj_inbox => from_and_subj_inbox, :num_inbox_total_unread => lambda { Index.num_results_for :labels => [:inbox, :unread] }
 
   end
 

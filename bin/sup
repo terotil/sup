@@ -7,6 +7,7 @@ require 'curses'
 require 'fileutils'
 require 'trollop'
 require "sup"
+require "sup/client"
 
 BIN_VERSION = "git"
 
@@ -42,13 +43,13 @@ end
 
 Trollop::die :subject, "requires --compose" if $opts[:subject] && !$opts[:compose]
 
-Redwood::HookManager.register "startup", <<EOS
+hook "startup", <<EOS
 Executes at startup
 No variables.
 No return value.
 EOS
 
-Redwood::HookManager.register "shutdown", <<EOS 
+hook "shutdown", <<EOS 
 Executes when sup is shutting down. May be run when sup is crashing,
 so don\'t do anything too important. Run before the label, contacts,
 and people are saved.
@@ -57,14 +58,14 @@ No return value.
 EOS
 
 if $opts[:list_hooks]
-  Redwood::HookManager.print_hooks
+  $hooks.print_hooks
   exit
 end
 
 Thread.abort_on_exception = true # make debugging possible
 Thread.current.priority = 1 # keep ui responsive
 
-module Redwood
+module Redwood::Client
 
 global_keymap = Keymap.new do |k|
   k.add :quit_ask, "Quit Sup, but ask first", 'q'
@@ -97,7 +98,7 @@ end
 require 'dl/import'
 module LibC
   extend DL.const_defined?(:Importer) ? DL::Importer : DL::Importable
-  setlocale_lib = case Config::CONFIG['arch']
+  setlocale_lib = case ::Config::CONFIG['arch']
     when /darwin/; "libc.dylib"
     when /cygwin/; "cygwin1.dll"
     else; "libc.so.6"
@@ -112,7 +113,7 @@ module LibC
   rescue RuntimeError => e
     warn "cannot dlload setlocale(); ncurses wide character support probably broken."
     warn "dlload error was #{e.class}: #{e.message}"
-    if Config::CONFIG['arch'] =~ /bsd/
+    if ::Config::CONFIG['arch'] =~ /bsd/
       warn "BSD variant detected. You may have to install a compat6x package to acquire libc."
     end
   end
@@ -137,47 +138,30 @@ def stop_cursing
 end
 module_function :start_cursing, :stop_cursing
 
-Index.init
-Index.lock_interactively or exit
-
 begin
-  Redwood::start
-  Index.load
-  Index.start_sync_worker unless $opts[:no_threads]
+  Redwood::Client.start
 
   $die = false
   trap("TERM") { |x| $die = true }
-  trap("WINCH") { |x| BufferManager.sigwinch_happened! }
+  trap("WINCH") { |x| $buffers.sigwinch_happened! }
 
-  if(s = Redwood::SourceManager.source_for DraftManager.source_name)
-    DraftManager.source = s
-  else
-    debug "no draft source, auto-adding..."
-    Redwood::SourceManager.add_source DraftManager.new_source
-  end
-
-  if(s = Redwood::SourceManager.source_for SentManager.source_uri)
-    SentManager.source = s
-  else
-    Redwood::SourceManager.add_source SentManager.default_source
-  end
-
-  HookManager.run "startup"
+  $hooks.run "startup"
 
   debug "starting curses"
-  Redwood::Logger.remove_sink $stderr
+  $logger.remove_sink $stderr
   start_cursing
 
-  bm = BufferManager.init
-  Colormap.new.populate_colormap
+  bm = $buffers = BufferManager.new
+  $colors = Colormap.new
+  $colors.populate_colormap
 
   debug "initializing log buffer"
-  lmode = Redwood::LogMode.new "system log"
-  lmode.on_kill { Logger.clear! }
-  Logger.add_sink lmode
-  Logger.force_message "Welcome to Sup! Log level is set to #{Logger.level}."
-  if Logger::LEVELS.index(Logger.level) > 0
-    Logger.force_message "For more verbose logging, restart with SUP_LOG_LEVEL=#{Logger::LEVELS[Logger::LEVELS.index(Logger.level)-1]}."
+  lmode = LogMode.new "system log"
+  lmode.on_kill { $logger.clear! }
+  $logger.add_sink lmode
+  $logger.force_message "Welcome to Sup! Log level is set to #{$logger.level}."
+  if Redwood::Logger::LEVELS.index($logger.level) > 0
+    $logger.force_message "For more verbose logging, restart with SUP_LOG_LEVEL=#{Redwood::Logger::LEVELS[Redwood::Logger::LEVELS.index($logger.level)-1]}."
   end
 
   debug "initializing inbox buffer"
@@ -188,7 +172,7 @@ begin
 
   bm.draw_screen
 
-  Redwood::SourceManager.usual_sources.each do |s|
+  $sources.usual_sources.each do |s|
     next unless s.respond_to? :connect
     reporting_thread("call #connect on #{s}") do
       begin
@@ -204,32 +188,31 @@ begin
   if $opts[:compose]
     to = Person.from_address_list $opts[:compose]
     mode = ComposeMode.new :to => to, :subj => $opts[:subject]
-    BufferManager.spawn "New Message", mode
+    $buffers.spawn "New Message", mode
     mode.edit_message
   end
 
   unless $opts[:no_threads]
-    PollManager.start
-    Index.start_lock_update_thread
+    #PollManager.start
   end
 
   if $opts[:search]
     SearchResultsMode.spawn_from_query $opts[:search]
   end
 
-  until Redwood::exceptions.nonempty? || $die
+  until Redwood::Client.exceptions.nonempty? || $die
     c = begin
       Ncurses.nonblocking_getch
     rescue Interrupt
-      raise if BufferManager.ask_yes_or_no "Die ungracefully now?"
-      BufferManager.draw_screen
+      raise if $buffers.ask_yes_or_no "Die ungracefully now?"
+      $buffers.draw_screen
       nil
     end
 
     if c.nil?
-      if BufferManager.sigwinch_happened?
+      if $buffers.sigwinch_happened?
         debug "redrawing screen on sigwinch"
-        BufferManager.completely_redraw_screen
+        $buffers.completely_redraw_screen
       end
       next
     end
@@ -274,7 +257,7 @@ begin
       b, new = bm.spawn_unless_exists("Contact List") { ContactListMode.new }
       b.mode.load_in_background if new
     when :search
-      query = BufferManager.ask :search, "search all messages: "
+      query = $buffers.ask :search, "search all messages: "
       next unless query && query !~ /^\s*$/
       SearchResultsMode.spawn_from_query query
     when :search_unread
@@ -294,7 +277,7 @@ begin
     when :poll
       reporting_thread("user-invoked poll") { PollManager.poll }
     when :poll_unusual
-      if BufferManager.ask_yes_or_no "Really poll unusual sources?"
+      if $buffers.ask_yes_or_no "Really poll unusual sources?"
         reporting_thread("user-invoked unusual poll") { PollManager.poll_unusual }
       end
     when :recall_draft
@@ -305,14 +288,14 @@ begin
         m = nil
         Index.each_id_by_date(:label => :draft) { |mid, builder| m = builder.call }
         r = ResumeMode.new(m)
-        BufferManager.spawn "Edit message", r
+        $buffers.spawn "Edit message", r
         r.edit_message
       else
-        b, new = BufferManager.spawn_unless_exists("All drafts") { LabelSearchResultsMode.new [:draft] }
+        b, new = $buffers.spawn_unless_exists("All drafts") { LabelSearchResultsMode.new [:draft] }
         b.mode.load_threads :num => b.content_height if new
       end
     when :show_inbox
-      BufferManager.raise_to_front ibuf
+      $buffers.raise_to_front ibuf
     when :show_console
       b, new = bm.spawn_unless_exists("Console", :system => true) { ConsoleMode.new }
       b.mode.run
@@ -328,39 +311,34 @@ begin
 
   bm.kill_all_buffers if $die
 rescue Exception => e
-  Redwood::record_exception e, "main"
+  Redwood::Client.record_exception e, "main"
 ensure
-  unless $opts[:no_threads]
-    PollManager.stop if PollManager.instantiated?
-    Index.stop_lock_update_thread
-  end
+  $poll.stop if $poll
 
-  HookManager.run "shutdown"
+  $hooks.run "shutdown"
 
-  Index.stop_sync_worker
-  Redwood::finish
+  Redwood::Client.finish
   stop_cursing
-  Redwood::Logger.remove_all_sinks!
-  Redwood::Logger.add_sink $stderr, false
+  $logger.remove_all_sinks!
+  $logger.add_sink $stderr, false
   debug "stopped cursing"
 
   if $die
     info "I've been ordered to commit seppuku. I obey!"
   end
 
-  if Redwood::exceptions.empty?
+  if Redwood::Client.exceptions.empty?
     debug "no fatal errors. good job, william."
-    Index.save
   else
     error "oh crap, an exception"
   end
 
-  Index.unlock
+  #Index.unlock
 end
 
-unless Redwood::exceptions.empty?
+unless Redwood::Client.exceptions.empty?
   File.open(File.join(BASE_DIR, "exception-log.txt"), "w") do |f|
-    Redwood::exceptions.each do |e, name|
+    Redwood::Client.exceptions.each do |e, name|
       f.puts "--- #{e.class.name} from thread: #{name}"
       f.puts e.message, e.backtrace
     end
@@ -377,7 +355,7 @@ Sincerely,
 William
 ----------------------------------------------------------------
 EOS
-  Redwood::exceptions.each do |e, name|
+  Redwood::Client.exceptions.each do |e, name|
     puts "--- #{e.class.name} from thread: #{name}"
     puts e.message, e.backtrace
   end

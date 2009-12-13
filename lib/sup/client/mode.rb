@@ -1,6 +1,7 @@
 # encoding: utf-8
 require 'open3'
 module Redwood
+module Client
 
 class Mode
   attr_accessor :buffer
@@ -41,7 +42,7 @@ class Mode
   def resolve_input c
     ancestors.each do |klass| # try all keymaps in order of ancestry
       next unless @@keymaps.member?(klass)
-      action = BufferManager.resolve_input_with_keymap c, @@keymaps[klass]
+      action = $buffers.resolve_input_with_keymap c, @@keymaps[klass]
       return action if action
     end
     nil
@@ -77,19 +78,19 @@ EOS
 
   def save_to_file fn, talk=true
     if File.exists? fn
-      unless BufferManager.ask_yes_or_no "File \"#{fn}\" exists. Overwrite?"
+      unless $buffers.ask_yes_or_no "File \"#{fn}\" exists. Overwrite?"
         info "Not overwriting #{fn}"
         return
       end
     end
     begin
       File.open(fn, "w") { |f| yield f }
-      BufferManager.flash "Successfully wrote #{fn}." if talk
+      $buffers.flash "Successfully wrote #{fn}." if talk
       true
     rescue SystemCallError, IOError => e
       m = "Error writing file: #{e.message}"
       info m
-      BufferManager.flash m
+      $buffers.flash m
       false
     end
   end
@@ -102,10 +103,10 @@ EOS
         message = err.first.read
         if message =~ /^\s*$/
           warn "error running #{command} (but no error message)"
-          BufferManager.flash "Error running #{command}!"
+          $buffers.flash "Error running #{command}!"
         else
           warn "error running #{command}: #{message}"
-          BufferManager.flash "Error: #{message}"
+          $buffers.flash "Error: #{message}"
         end
         return
       end
@@ -121,7 +122,7 @@ EOS
       data = data.first
 
       if data.eof
-        BufferManager.flash "'#{command}' done!"
+        $buffers.flash "'#{command}' done!"
         nil
       else
         data.read
@@ -130,4 +131,5 @@ EOS
   end
 end
 
+end
 end

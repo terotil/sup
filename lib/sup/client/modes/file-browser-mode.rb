@@ -2,6 +2,7 @@
 require 'pathname'
 
 module Redwood
+module Client
 
 ## meant to be spawned via spawn_modal!
 class FileBrowserMode < LineCursorMode
@@ -48,9 +49,9 @@ protected
     return unless f && f.file?
 
     begin
-      BufferManager.spawn f.to_s, TextMode.new(f.read)
+      $buffers.spawn f.to_s, TextMode.new(f.read)
     rescue SystemCallError => e
-      BufferManager.flash e.message
+      $buffers.flash e.message
     end
   end
 
@@ -63,14 +64,14 @@ protected
         @dirs.push f
         reload
       else
-        BufferManager.flash "Permission denied - #{f.realpath}"
+        $buffers.flash "Permission denied - #{f.realpath}"
       end
     else
       begin
         @value = f.realpath.to_s
         @done = true
       rescue SystemCallError => e
-        BufferManager.flash e.message
+        $buffers.flash e.message
       end
     end
   end
@@ -82,7 +83,7 @@ protected
           [f.directory? ? 0 : 1, f.basename.to_s]
         end
       rescue SystemCallError => e
-        BufferManager.flash "Error: #{e.message}"
+        $buffers.flash "Error: #{e.message}"
         [Pathname.new("."), Pathname.new("..")]
       end.map do |f|
       real_f = cwd + f
@@ -107,4 +108,5 @@ protected
   end
 end
 
+end
 end

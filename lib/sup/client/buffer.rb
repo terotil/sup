@@ -57,6 +57,7 @@ end
 end
 
 module Redwood
+module Client
 
 class InputSequenceAborted < StandardError; end
 
@@ -153,8 +154,6 @@ class Buffer
 end
 
 class BufferManager
-  include Singleton
-
   attr_reader :focus_buf
 
   ## we have to define the key used to continue in-buffer search here, because
@@ -162,7 +161,7 @@ class BufferManager
   ## are canceled by any keypress except this one.
   CONTINUE_IN_BUFFER_SEARCH_KEY = "n"
 
-  HookManager.register "status-bar-text", <<EOS
+  hook "status-bar-text", <<EOS
 Sets the status bar. The default status bar contains the mode name, the buffer
 title, and the mode status. Note that this will be called at least once per
 keystroke, so excessive computation is discouraged.
@@ -178,7 +177,7 @@ Variables:
 Return value: a string to be used as the status bar.
 EOS
 
-  HookManager.register "terminal-title-text", <<EOS
+  hook "terminal-title-text", <<EOS
 Sets the title of the current terminal, if applicable. Note that this will be
 called at least once per keystroke, so excessive computation is discouraged.
 
@@ -186,7 +185,7 @@ Variables: the same as status-bar-text hook.
 Return value: a string to be used as the terminal title.
 EOS
 
-  HookManager.register "extra-contact-addresses", <<EOS
+  hook "extra-contact-addresses", <<EOS
 A list of extra addresses to propose for tab completion, etc. when the
 user is entering an email address. Can be plain email addresses or can
 be full "User Name <email@domain.tld>" entries.
@@ -533,6 +532,7 @@ EOS
   end
 
   def ask_for_contacts domain, question, default_contacts=[]
+    fail
     default = default_contacts.map { |s| s.to_s }.join(" ")
     default += " " unless default.empty?
 
@@ -540,7 +540,7 @@ EOS
     contacts = ContactManager.contacts.map { |c| [ContactManager.alias_for(c), c.full_address, c.email] }
 
     completions = (recent + contacts).flatten.uniq
-    completions += HookManager.run("extra-contact-addresses") || []
+    completions += $hooks.run("extra-contact-addresses") || []
     answer = BufferManager.ask_many_emails_with_completions domain, question, completions, default
 
     if answer
@@ -778,8 +778,8 @@ private
       :status => buf.mode.status
     }
 
-    statusbar_text = HookManager.run("status-bar-text", opts) || default_status_bar(buf)
-    term_title_text = HookManager.run("terminal-title-text", opts) || default_terminal_title(buf)
+    statusbar_text = $hooks.run("status-bar-text", opts) || default_status_bar(buf)
+    term_title_text = $hooks.run("terminal-title-text", opts) || default_terminal_title(buf)
     
     [statusbar_text, term_title_text]
   end
@@ -793,5 +793,7 @@ private
     end
     @users
   end
+end
+
 end
 end

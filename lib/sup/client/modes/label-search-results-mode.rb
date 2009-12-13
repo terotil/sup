@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class LabelSearchResultsMode < ThreadIndexMode
   def initialize labels
@@ -16,7 +17,7 @@ class LabelSearchResultsMode < ThreadIndexMode
 
   def refine_search
     label_query = @labels.size > 1 ? "(#{@labels.join('||')})" : @labels.first
-    query = BufferManager.ask :search, "refine query: ", "+label:#{label_query} "
+    query = $buffers.ask :search, "refine query: ", "+label:#{label_query} "
     return unless query && query !~ /^\s*$/
     SearchResultsMode.spawn_from_query query
   end
@@ -28,12 +29,13 @@ class LabelSearchResultsMode < ThreadIndexMode
     case label
     when nil
     when :inbox
-      BufferManager.raise_to_front InboxMode.instance.buffer
+      $buffers.raise_to_front InboxMode.instance.buffer
     else
-      b, new = BufferManager.spawn_unless_exists("All threads with label '#{label}'") { LabelSearchResultsMode.new [label] }
+      b, new = $buffers.spawn_unless_exists("All threads with label '#{label}'") { LabelSearchResultsMode.new [label] }
       b.mode.load_threads :num => b.content_height if new
     end
   end
 end
 
+end
 end

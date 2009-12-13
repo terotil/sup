@@ -24,16 +24,17 @@ require 'sup/util'
 require 'sup/server/config'
 require 'sup/hook'
 
-Redwood::Server::Config.load Redwood::Server::CONFIG_FN
-Redwood::HookManager.init Redwood::Server::HOOK_DIR
+$config = Redwood::Server::Config.load Redwood::Server::CONFIG_FN
+$hooks = Redwood::HookManager.new Redwood::Server::HOOK_DIR
 
 require 'sup/logger'
-Redwood::Logger.init.add_sink $stderr
+$logger = Redwood::Logger.new
+$logger.add_sink $stderr
 include Redwood::LogsStuff
 
 require 'sup/crypto'
 
-Redwood::CryptoManager.init
+$crypto = Redwood::CryptoManager.new
 
 require 'sup/protocol'
 require 'sup/protocol-actors'

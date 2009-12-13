@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class HelpMode < TextMode
   def initialize mode, global_keymap
@@ -17,4 +18,4 @@ EOS
 end
 
 end
-
+end

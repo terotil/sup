@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class CompletionMode < ScrollMode
   INTERSTITIAL = "  "
@@ -53,4 +54,5 @@ private
   end
 end
 
+end
 end

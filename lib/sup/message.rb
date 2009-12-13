@@ -234,7 +234,7 @@ private
       return
     end
 
-    [CryptoManager.verify(payload, signature), message_to_chunks(payload)].flatten.compact
+    [$crypto.verify(payload, signature), message_to_chunks(payload)].flatten.compact
   end
 
   def multipart_encrypted_to_chunks m
@@ -259,7 +259,7 @@ private
       return
     end
 
-    notice, sig, decryptedm = CryptoManager.decrypt payload
+    notice, sig, decryptedm = $crypto.decrypt payload
     if decryptedm # managed to decrypt
       children = message_to_chunks(decryptedm, true)
       [notice, sig].compact + children
@@ -300,7 +300,7 @@ private
       ## application/pgp. this handles that.
       ##
       ## TODO: unduplicate code between here and multipart_encrypted_to_chunks
-      notice, sig, decryptedm = CryptoManager.decrypt m.body
+      notice, sig, decryptedm = $crypto.decrypt m.body
       if decryptedm # managed to decrypt
         children = message_to_chunks decryptedm, true
         [notice, sig].compact + children

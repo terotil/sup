@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class PollMode < LogMode
   def initialize
@@ -17,4 +18,5 @@ class PollMode < LogMode
   end
 end
 
+end
 end

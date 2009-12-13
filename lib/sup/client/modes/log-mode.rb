@@ -1,6 +1,7 @@
 # encoding: utf-8
 require 'stringio'
 module Redwood
+module Client
 
 ## a variant of text mode that allows the user to automatically follow text,
 ## and respawns when << is called if necessary.
@@ -33,7 +34,7 @@ class LogMode < TextMode
 
   def << s
     if buffer.nil? && @autospawn_buffer_name
-      BufferManager.spawn @autospawn_buffer_name, self, :hidden => true, :system => true
+      $buffers.spawn @autospawn_buffer_name, self, :hidden => true, :system => true
     end
 
     s.split("\n").each { |l| super(l + "\n") } # insane. different << semantics.
@@ -55,4 +56,5 @@ class LogMode < TextMode
   end
 end
 
+end
 end

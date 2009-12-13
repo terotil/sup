@@ -182,12 +182,11 @@ module SerializeLabelsNicely
 end
 
 class SourceManager
-  include Singleton
-
-  def initialize
+  def initialize fn
     @sources = {}
     @sources_dirty = false
     @source_mutex = Monitor.new
+    @fn = fn
   end
 
   def [](uri)
@@ -211,24 +210,24 @@ class SourceManager
   def usual_sources; sources.find_all { |s| s.usual? }; end
   def unusual_sources; sources.find_all { |s| !s.usual? }; end
 
-  def load_sources fn=Redwood::Client::SOURCE_FN
-    source_array = (Redwood::Util::YAMLConfig.load_yaml_obj(fn) || []).map { |o| Recoverable.new o }
+  def load_sources
+    source_array = (Redwood::Util::YAMLConfig.load_yaml_obj(@fn) || []).map { |o| Recoverable.new o }
     @source_mutex.synchronize do
       @sources = Hash[*(source_array).map { |s| [s.uri, s] }.flatten]
       @sources_dirty = false
     end
   end
 
-  def save_sources fn=Redwood::Client::SOURCE_FN
+  def save_sources
     @source_mutex.synchronize do
       if @sources_dirty || @sources.any? { |uri, s| s.dirty? }
-        bakfn = fn + ".bak"
-        if File.exists? fn
-          File.chmod 0600, fn
-          FileUtils.mv fn, bakfn, :force => true unless File.exists?(bakfn) && File.size(fn) == 0
+        bakfn = @fn + ".bak"
+        if File.exists? @fn
+          File.chmod 0600, @fn
+          FileUtils.mv @fn, bakfn, :force => true unless File.exists?(bakfn) && File.size(@fn) == 0
         end
-        Redwood::Util::YAMLConfig.save_yaml_obj sources, fn, true
-        File.chmod 0600, fn
+        Redwood::Util::YAMLConfig.save_yaml_obj sources, @fn, true
+        File.chmod 0600, @fn
       end
       @sources_dirty = false
     end

@@ -15,7 +15,7 @@ class Index
   MIN_DATE = Time.at 0
   MAX_DATE = Time.at(2**31-1)
 
-  Redwood::HookManager.register "custom-search", <<EOS
+  hook "custom-search", <<EOS
 Executes before a string search is applied to the index,
 returning a new search string.
 Variables:
@@ -144,7 +144,7 @@ EOS
   def parse_query s
     query = {}
 
-    subs = Redwood::HookManager.run("custom-search", :subs => s) || s
+    subs = $hooks.run("custom-search", :subs => s) || s
 =begin
     subs = subs.gsub(/\b(to|from):(\S+)\b/) do
       field, name = $1, $2

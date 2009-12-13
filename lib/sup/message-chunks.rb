@@ -45,8 +45,7 @@ module Chunk
   WRAP_LEN = 80 # wrap messages and text attachments at this width
 
   class Attachment
-=begin
-    HookManager.register "mime-decode", <<EOS
+    hook "mime-decode", <<EOS
 Decodes a MIME attachment into text form. The text will be displayed
 directly in Sup. For attachments that you wish to use a separate program
 to view (e.g. images), you should use the mime-view hook instead.
@@ -62,7 +61,7 @@ Return value:
   The decoded text of the attachment, or nil if not decoded.
 EOS
 
-    HookManager.register "mime-view", <<EOS
+    hook "mime-view", <<EOS
 Views a non-text MIME attachment. This hook allows you to run
 third-party programs for attachments that require such a thing (e.g.
 images). To instead display a text version of the attachment directly in
@@ -80,7 +79,7 @@ Return value:
   True if the viewing was successful, false otherwise. If false, calling
   /usr/bin/run-mailcap will be tried.
 EOS
-=end
+
 #' stupid ruby-mode
 
     ## raw_content is the post-MIME-decode content. this is used for
@@ -104,12 +103,10 @@ EOS
       when /^text\/plain\b/
         Iconv.easy_decode $encoding, encoded_content.charset || $encoding, @raw_content
       else
-=begin
-        HookManager.run "mime-decode", :content_type => content_type,
+        $hooks.run "mime-decode", :content_type => content_type,
                         :filename => lambda { write_to_disk },
                         :charset => encoded_content.charset,
                         :sibling_types => sibling_types
-=end
       end
 
       @lines = nil
@@ -150,11 +147,9 @@ EOS
 
     def view!
       path = write_to_disk
-=begin
-      ret = HookManager.run "mime-view", :content_type => @content_type,
+      ret = $hooks.run "mime-view", :content_type => @content_type,
                                          :filename => path
       ret || view_default!(path)
-=end
       view_default!(path)
     end
 

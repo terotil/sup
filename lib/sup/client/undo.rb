@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 ## Implements a single undo list for the Sup instance
 ##
@@ -9,8 +10,6 @@ module Redwood
 ## undo the archival action
 
 class UndoManager
-  include Singleton
-
   def initialize
     @@actionlist = []
   end
@@ -35,5 +34,7 @@ class UndoManager
   def clear
     @@actionlist = []
   end
+end
+
 end
 end

@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 ## extends ScrollMode to have a line-based cursor.
 class LineCursorMode < ScrollMode
@@ -181,4 +182,5 @@ private
   end
 end
 
+end
 end

@@ -2,6 +2,7 @@
 require 'pp'
 
 module Redwood
+module Client
 
 class Console
   def initialize mode
@@ -55,7 +56,7 @@ class Console
   end
 
   def clear_hooks
-    HookManager.clear
+    $hooks.clear
     nil
   end
 end
@@ -85,7 +86,7 @@ class ConsoleMode < LogMode
   end
 
   def prompt
-    BufferManager.ask :console, ">> "
+    $buffers.ask :console, ">> "
   end
 
   def run
@@ -106,4 +107,5 @@ EOS
   end
 end
 
+end
 end

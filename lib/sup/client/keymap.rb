@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class Keymap
   def initialize
@@ -98,4 +99,5 @@ class Keymap
   end
 end
 
+end
 end
