@@ -468,7 +468,7 @@ EOS
       prefix, target = partial.split_on_commas_with_remainder
       target ||= prefix.pop || ""
       prefix = prefix.join(", ") + (prefix.empty? ? "" : ", ")
-      completions.select { |x| x =~ /^#{Regexp::escape target}/i }.sort_by { |c| [ContactManager.contact_for(c) ? 0 : 1, c] }.map { |x| [prefix + x, x] }
+      completions.select { |x| x =~ /^#{Regexp::escape target}/i }.sort_by { |c| [$contacts.contact_for(c) ? 0 : 1, c] }.map { |x| [prefix + x, x] }
     end
   end
 
@@ -524,7 +524,7 @@ EOS
     user_labels = answer.to_set_of_symbols
     user_labels.each do |l|
       if forbidden_labels.include?(l) || LabelManager::RESERVED_LABELS.include?(l)
-        BufferManager.flash "'#{l}' is a reserved label!"
+        flash "'#{l}' is a reserved label!"
         return
       end
     end
@@ -536,15 +536,15 @@ EOS
     default = default_contacts.map { |s| s.to_s }.join(" ")
     default += " " unless default.empty?
 
-    recent = Index.load_contacts(AccountManager.user_emails, :num => 10).map { |c| [c.full_address, c.email] }
-    contacts = ContactManager.contacts.map { |c| [ContactManager.alias_for(c), c.full_address, c.email] }
+    recent = Index.load_contacts($accounts.user_emails, :num => 10).map { |c| [c.full_address, c.email] }
+    contacts = $contacts.contacts.map { |c| [$contacts.alias_for(c), c.full_address, c.email] }
 
     completions = (recent + contacts).flatten.uniq
     completions += $hooks.run("extra-contact-addresses") || []
-    answer = BufferManager.ask_many_emails_with_completions domain, question, completions, default
+    answer = ask_many_emails_with_completions domain, question, completions, default
 
     if answer
-      answer.split_on_commas.map { |x| ContactManager.contact_for(x) || Person.from_address(x) }
+      answer.split_on_commas.map { |x| $contacts.contact_for(x) || Person.from_address(x) }
     end
   end
 
@@ -661,7 +661,7 @@ EOS
   def resolve_input_with_keymap c, keymap
     action, text = keymap.action_for c
     while action.is_a? Keymap # multi-key commands, prompt
-      key = BufferManager.ask_getch text
+      key = ask_getch text
       unless key # user canceled, abort
         erase_flash
         raise InputSequenceAborted

@@ -1,5 +1,6 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 ## a fully-functional text field supporting completions, expansions,
 ## history--everything!
@@ -178,5 +179,7 @@ private
     Ncurses::Form.form_driver @form, " "[0]
     Ncurses::Form.form_driver @form, Ncurses::Form::REQ_DEL_PREV
   end
+end
+
 end
 end

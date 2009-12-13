@@ -1,9 +1,8 @@
 # encoding: utf-8
 module Redwood
+module Client
 
 class LabelManager
-  include Singleton
-
   ## labels that have special semantics. user will be unable to
   ## add/remove these via normal label mechanisms.
   RESERVED_LABELS = [ :starred, :spam, :draft, :unread, :killed, :sent, :deleted, :inbox, :attachment ]
@@ -83,4 +82,5 @@ class LabelManager
   end
 end
 
+end
 end

@@ -180,12 +180,12 @@ private
 
   def run_gpg args, opts={}
     cmd = "#{@cmd} #{args}"
-    if opts[:interactive] && BufferManager.instantiated?
+    if opts[:interactive] && $buffers
       output_fn = Tempfile.new "redwood.output"
       output_fn.close
       cmd += " > #{output_fn.path} 2> /dev/null"
       debug "crypto: running: #{cmd}"
-      BufferManager.shell_out cmd
+      $buffers.shell_out cmd
       IO.read(output_fn.path) rescue "can't read output"
     else
       debug "crypto: running: #{cmd}"

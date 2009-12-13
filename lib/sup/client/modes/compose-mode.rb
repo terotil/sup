@@ -5,7 +5,7 @@ module Client
 class ComposeMode < EditMessageMode
   def initialize opts={}
     header = {}
-    header["From"] = (opts[:from] || AccountManager.default_account).full_address
+    header["From"] = (opts[:from] || $accounts.default_account).full_address
     header["To"] = opts[:to].map { |p| p.full_address }.join(", ") if opts[:to]
     header["Cc"] = opts[:cc].map { |p| p.full_address }.join(", ") if opts[:cc]
     header["Bcc"] = opts[:bcc].map { |p| p.full_address }.join(", ") if opts[:bcc]

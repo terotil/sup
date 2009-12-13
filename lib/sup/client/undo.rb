@@ -25,9 +25,9 @@ class UndoManager
     unless @@actionlist.empty?
       actionset = @@actionlist.pop
       actionset[:actions].each { |action| action.call }
-      BufferManager.flash "undid #{actionset[:desc]}"
+      $buffers.flash "undid #{actionset[:desc]}"
     else
-      BufferManager.flash "nothing more to undo!"
+      $buffers.flash "nothing more to undo!"
     end
   end
 

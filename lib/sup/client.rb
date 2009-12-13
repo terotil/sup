@@ -15,7 +15,8 @@ module Redwood::Client
   COLOR_FN   = File.join(BASE_DIR, "colors.yaml")
   SOURCE_FN  = File.join(BASE_DIR, "sources.yaml")
   CONTACT_FN = File.join(BASE_DIR, "contacts.txt")
-  HOOK_DIR    = File.join(BASE_DIR, "hooks")
+  LABELS_FN  = File.join(BASE_DIR, "labels.txt")
+  HOOK_DIR   = File.join(BASE_DIR, "hooks")
   LOCK_FN    = File.join(BASE_DIR, "lock")
   SUICIDE_FN = File.join(BASE_DIR, "please-kill-yourself")
 
@@ -25,6 +26,7 @@ module Redwood::Client
     $sources.load_sources
     $config = Redwood::Client::Config.load CONFIG_FN
     $contacts = Redwood::Client::ContactManager.new CONTACT_FN
+    $labels = Redwood::Client::LabelManager.new LABELS_FN
     $account = Redwood::Client::AccountManager.new $config[:accounts]
     $crypto = Redwood::CryptoManager.new
     $undo = Redwood::Client::UndoManager.new
@@ -40,11 +42,11 @@ module Redwood::Client
   ## a source error is either a FatalSourceError or an OutOfSyncSourceError.
   ## the superclass SourceError is just a generic.
   def report_broken_sources opts={}
-    return unless BufferManager.instantiated?
+    return unless $buffers
 
     broken_sources = $sources.sources.select { |s| s.error.is_a? FatalSourceError }
     unless broken_sources.empty?
-      BufferManager.spawn_unless_exists("Broken source notification for #{broken_sources.join(',')}", opts) do
+      $buffers.spawn_unless_exists("Broken source notification for #{broken_sources.join(',')}", opts) do
         TextMode.new(<<EOM)
 Source error notification
 -------------------------
@@ -59,9 +61,9 @@ EOM
       end
     end
 
-    desynced_sources = SourceManager.sources.select { |s| s.error.is_a? OutOfSyncSourceError }
+    desynced_sources = $sources.sources.select { |s| s.error.is_a? OutOfSyncSourceError }
     unless desynced_sources.empty?
-      BufferManager.spawn_unless_exists("Out-of-sync source notification for #{broken_sources.join(',')}", opts) do
+      $buffers.spawn_unless_exists("Out-of-sync source notification for #{broken_sources.join(',')}", opts) do
         TextMode.new(<<EOM)
 Out-of-sync source notification
 -------------------------------

@@ -183,7 +183,7 @@ begin
     end
   end unless $opts[:no_initial_poll]
 
-  imode.load_threads :num => ibuf.content_height, :when_done => lambda { |num| reporting_thread("poll after loading inbox") { sleep 1; PollManager.poll } unless $opts[:no_threads] || $opts[:no_initial_poll] }
+  imode.load_threads :num => ibuf.content_height, :when_done => lambda { |num| reporting_thread("poll after loading inbox") { sleep 1; $poll.poll } unless $opts[:no_threads] || $opts[:no_initial_poll] }
 
   if $opts[:compose]
     to = Person.from_address_list $opts[:compose]
@@ -193,7 +193,7 @@ begin
   end
 
   unless $opts[:no_threads]
-    #PollManager.start
+    #$poll.start
   end
 
   if $opts[:search]
@@ -263,7 +263,7 @@ begin
     when :search_unread
       SearchResultsMode.spawn_from_query "is:unread"
     when :list_labels
-      labels = LabelManager.all_labels.map { |l| LabelManager.string_for l }
+      labels = $labels.all_labels.map { |l| $labels.string_for l }
       user_label = bm.ask_with_completions :label, "Show threads with label (enter for listing): ", labels
       unless user_label.nil?
         if user_label.empty?
@@ -275,10 +275,10 @@ begin
     when :compose
       ComposeMode.spawn_nicely
     when :poll
-      reporting_thread("user-invoked poll") { PollManager.poll }
+      reporting_thread("user-invoked poll") { $poll.poll }
     when :poll_unusual
       if $buffers.ask_yes_or_no "Really poll unusual sources?"
-        reporting_thread("user-invoked unusual poll") { PollManager.poll_unusual }
+        reporting_thread("user-invoked unusual poll") { $poll.poll_unusual }
       end
     when :recall_draft
       case Index.num_results_for :label => :draft

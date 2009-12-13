@@ -141,7 +141,7 @@ EOS
           cmd = "/usr/bin/run-mailcap --action=view '#{@content_type}:#{path}'"
       end
       debug "running: #{cmd.inspect}"
-      BufferManager.shell_out(cmd)
+      $buffers.shell_out(cmd)
       $? == 0
     end
 

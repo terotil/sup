@@ -44,12 +44,12 @@ EOS
     @mode ||= PollMode.new
     $hooks.run "before-poll"
 
-    BufferManager.flash "Polling for new messages..."
+    $buffers.flash "Polling for new messages..."
     num, numi, from_and_subj, from_and_subj_inbox, loaded_labels = @mode.poll
     if num > 0
-      BufferManager.flash "Loaded #{num.pluralize 'new message'}, #{numi} to inbox. Labels: #{loaded_labels.map{|l| l.to_s}.join(', ')}"
+      $buffers.flash "Loaded #{num.pluralize 'new message'}, #{numi} to inbox. Labels: #{loaded_labels.map{|l| l.to_s}.join(', ')}"
     else
-      BufferManager.flash "No new messages." 
+      $buffers.flash "No new messages." 
     end
 
     $hooks.run "after-poll", :num => num, :num_inbox => numi, :from_and_subj => from_and_subj, :from_and_subj_inbox => from_and_subj_inbox, :num_inbox_total_unread => lambda { Index.num_results_for :labels => [:inbox, :unread] }
@@ -59,7 +59,7 @@ EOS
   def poll
     return if @polling
     @polling = true
-    @poll_sources = SourceManager.usual_sources
+    @poll_sources = $sources.usual_sources
     num, numi = poll_with_sources
     @polling = false
     [num, numi]
@@ -68,7 +68,7 @@ EOS
   def poll_unusual
     return if @polling
     @polling = true
-    @poll_sources = SourceManager.unusual_sources
+    @poll_sources = $sources.unusual_sources
     num, numi = poll_with_sources
     @polling = false
     [num, numi]
@@ -163,9 +163,9 @@ EOS
 
         labels = source_labels + (source.archived? ? [] : [:inbox])
         labels.delete :unread if m.source_marked_read? # preserve read status if possible
-        m = Message.parse source.raw_message(offset), source_info: offset, labels: labels
+        m = Redwood::Message.parse source.raw_message(offset), source_info: offset, labels: labels
 
-        #HookManager.run "before-add-message", :message => m
+        #$hooks.run "before-add-message", :message => m
         yield m
       end
     rescue SourceError => e
@@ -180,8 +180,8 @@ EOS
   ## a wrapper around Index.add_message that calls the proper hooks,
   ## does the gui callback stuff, etc.
   def add_new_message m
-    Index.add_message m
-    UpdateManager.relay self, :added, m
+    #Index.add_message m
+    #UpdateManager.relay self, :added, m
   end
 end
 

@@ -2,8 +2,6 @@
 module Redwood
 
 class DraftManager
-  include Singleton
-
   attr_accessor :source
   def initialize dir
     @dir = dir
@@ -20,8 +18,8 @@ class DraftManager
     File.open(fn, "w") { |f| yield f }
 
     my_message = nil
-    PollManager.each_message_from(@source) do |m|
-      PollManager.add_new_message m
+    $poll.each_message_from(@source) do |m|
+      $poll.add_new_message m
       my_message = m
     end
 

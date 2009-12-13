@@ -33,12 +33,12 @@ EOS
     @text = []
     @unread_only = false
     super
-    UpdateManager.register self
+    #UpdateManager.register self
     regen_text
   end
 
   def cleanup
-    UpdateManager.unregister self
+    #UpdateManager.unregister self
     super
   end
 
@@ -78,12 +78,14 @@ protected
 
   def regen_text
     @text = []
-    labels = LabelManager.all_labels
+    labels = $labels.all_labels
 
     counted = labels.map do |label|
-      string = LabelManager.string_for label
-      total = Index.num_results_for :label => label
-      unread = (label == :unread)? total : Index.num_results_for(:labels => [label, :unread])
+      string = $labels.string_for label
+      #total = Index.num_results_for :label => label
+      #unread = (label == :unread)? total : Index.num_results_for(:labels => [label, :unread])
+      total = 0
+      unread = 0
       [label, string, total, unread]
     end
 
@@ -110,9 +112,9 @@ protected
       ## this is all a hack. what should happen is:
       ##   TODO make the labelmanager responsible for label counts
       ## and then it can listen to labeled and unlabeled events, etc.
-      if total == 0 && !LabelManager::RESERVED_LABELS.include?(label) && !LabelManager.new_label?(label)
+      if total == 0 && !LabelManager::RESERVED_LABELS.include?(label) && !$labels.new_label?(label)
         debug "no hits for label #{label}, deleting"
-        LabelManager.delete label
+        $labels.delete label
         next
       end
 

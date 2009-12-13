@@ -72,15 +72,15 @@ EOS
     ## this is for the case where mail is received from a mailing lists (so the
     ## To: is the list id itself). if the user subscribes via a particular
     ## alias, we want to use that alias in the reply.
-    elsif @m.recipient_email && (a = AccountManager.account_for(@m.recipient_email))
+    elsif @m.recipient_email && (a = $accounts.account_for(@m.recipient_email))
       Person.new a.name, @m.recipient_email
     ## otherwise, try and find an account somewhere in the list of to's
     ## and cc's.
-    elsif(b = (@m.to + @m.cc).find { |p| AccountManager.is_account? p })
+    elsif(b = (@m.to + @m.cc).find { |p| $accounts.is_account? p })
       b
     ## if all else fails, use the default
     else
-      AccountManager.default_account
+      $accounts.default_account
     end
 
     ## now, determine to: and cc: addressess. we ignore reply-to for list
@@ -106,11 +106,11 @@ EOS
     ## typically we don't want to have a reply-to-sender option if the sender
     ## is a user account. however, if the cc is empty, it's a message to
     ## ourselves, so for the lack of any other options, we'll add it.
-    @headers[:sender] = { "To" => [to.full_address], } if !AccountManager.is_account?(to) || !useful_recipient
+    @headers[:sender] = { "To" => [to.full_address], } if !$accounts.is_account?(to) || !useful_recipient
 
     @headers[:user] = {}
 
-    not_me_ccs = cc.select { |p| !AccountManager.is_account?(p) }
+    not_me_ccs = cc.select { |p| !$accounts.is_account?(p) }
     @headers[:all] = {
       "To" => [to.full_address],
       "Cc" => not_me_ccs.map { |p| p.full_address },

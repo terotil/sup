@@ -2,8 +2,6 @@
 module Redwood
 
 class SentManager
-  include Singleton
-
   attr_reader :source, :source_uri
 
   def initialize source_uri

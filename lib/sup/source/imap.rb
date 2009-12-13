@@ -277,12 +277,12 @@ private
   end
 
   def say s
-    @say_id = BufferManager.say s, @say_id if BufferManager.instantiated?
+    @say_id = $buffers.say s, @say_id if $buffers
     info s
   end
 
   def shutup
-    BufferManager.clear @say_id if BufferManager.instantiated?
+    $buffers.clear @say_id if $buffers
     @say_id = nil
   end
 

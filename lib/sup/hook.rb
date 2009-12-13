@@ -12,9 +12,9 @@ class HookManager
     end
 
     def say s
-      if BufferManager.instantiated?
-        @__say_id = BufferManager.say s, @__say_id
-        BufferManager.draw_screen
+      if $buffers
+        @__say_id = $buffers.say s, @__say_id
+        $buffers.draw_screen
       else
         log s
       end
@@ -25,8 +25,8 @@ class HookManager
     end
 
     def ask_yes_or_no q
-      if BufferManager.instantiated?
-        BufferManager.ask_yes_or_no q
+      if $buffers
+        $buffers.ask_yes_or_no q
       else
         print q
         gets.chomp.downcase == 'y'
@@ -56,7 +56,7 @@ class HookManager
         end
       end
       ret = eval __hook, __binding, __filename
-      BufferManager.clear @__say_id if @__say_id
+      $buffers.clear @__say_id if @__say_id
       @__cache = {}
       ret
     end
@@ -84,7 +84,7 @@ class HookManager
       log "error running #{fn}: #{e.message}"
       log e.backtrace.join("\n")
       @hooks[name] = nil # disable it
-      BufferManager.flash "Error running hook: #{e.message}" if BufferManager.instantiated?
+      $buffers.flash "Error running hook: #{e.message}" if $buffers
     end
     result
   end

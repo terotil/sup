@@ -13,8 +13,6 @@ module Redwood
 ## single "view". Luckily, that's true.)
 
 class UpdateManager
-  include Singleton
-
   def initialize
     @targets = {}
   end
