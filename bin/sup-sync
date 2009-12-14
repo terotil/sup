@@ -17,8 +17,6 @@ require 'sup/client/poll'
 require 'uri'
 require 'sup/crypto'
 
-P = Redwood::Protocol
-
 PROGRESS_UPDATE_INTERVAL = 15 # seconds
 
 class Float
@@ -110,7 +108,7 @@ target = [:new, :changed, :all, :restored].find { |x| opts[x] } || :new
 op = [:asis, :restore, :discard].find { |x| opts[x] } || :asis
 
 uri = URI.parse opts[:uri] rescue Trollop::die :uri, "invalid URI: #{$!.message}"
-c = P.connect_normal uri
+c = Redwood::Protocol::Connection.connect uri
 
 restored_state = if opts[:restore]
   dump = {}
@@ -233,26 +231,17 @@ begin
       case dothis
       when :add
         puts "Adding new message #{source}##{source_info} with labels #{labels}" if opts[:verbose]
-        unless opts[:dry_run]
-          P.write c, :add, :raw => raw, :labels => labels
-          P.read c
-        end
+        c.add raw, labels unless opts[:dry_run]
         num_added += 1
       when :update
         puts "Updating message #{source}##{source_info}; labels #{old_labels} => #{labels}; offset #{old[:source]} => #{source_uri}" if opts[:verbose]
-        unless opts[:dry_run]
-          P.write c, :add, :raw => raw, :labels => labels
-          P.read c
-        end
+        c.add raw, labels unless opts[:dry_run]
         num_updated += 1
       when :label
         fail 'unimplemented'
         puts "Changing flags for #{source}##{source_info} from #{old_labels} to #{labels}" if opts[:verbose]
         sync_label :source 
-        unless opts[:dry_run]
-          P.write c, :label, :query => "source:#{source_uri}", :remove => old_labels, :add => labels
-          P.read c
-        end
+        c.label "source:#{source_uri}", old_labels, labels unless opts[:dry_run]
         num_updated += 1
       end
 

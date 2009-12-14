@@ -12,8 +12,6 @@ require 'haml'
 SERVER_URI = Redwood::DEFAULT_URI
 
 class Redwood::Web
-	P = Redwood::Protocol
-
 	def initialize uri
 		@uri = URI.parse uri
 	end
@@ -23,11 +21,11 @@ class Redwood::Web
 		resp = Rack::Response.new
 		sym = req.path[1..-1].to_sym
 		if respond_to? sym
-			c = Redwood::Protocol::connect_normal @uri
+			c = Redwood::Protocol::Connection.connect @uri
 			begin
 				send sym, c, req, resp
 			ensure
-				c.close unless c.closed?
+				c.close
 			end
 		else
 			resp.status = 404
@@ -43,25 +41,16 @@ class Redwood::Web
 
 	def query c, req, resp
 		s = req[:s]
-		summaries = []
-		P.write c, :query, query: s, offset: 0, limit: 100
-  	while ((x = P.read(c)) && x.first != :done)
-			summaries << x[1][:message]
-		end
+    summaries = c.query(s, 0, 100, false).map { |x| x[:message] }
 		resp.write(render :query, summaries: summaries)
 	end
 
 	def view c, req, resp
 		msgid = req[:message_id]
 		s = "msgid:#{msgid}"
-		summary = nil
-		raw = nil
-		P.write c, :query, query: s, offset: 0, limit: 1, raw: true
-  	while ((x = P.read(c)) && x.first != :done)
-			summary = x[1][:message]
-			raw = x[1][:raw]
-		end
-		m = Redwood::Message.parse raw, :labels => summary[:labels]
+    result = c.query(s, 0, 1, true).first
+    fail "nil result" unless result
+		m = Redwood::Message.parse result[:raw], :labels => result[:message][:labels]
 		resp.write(render :view, message: m)
 	end
 end

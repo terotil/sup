@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 require 'sup/util/mbox'
 require 'rubygems'
 require 'revactor'
@@ -62,7 +63,7 @@ else
 end
 
 begin
-  c = Protocol.connect uri
+  c = Protocol::Connection.connect uri
 rescue Errno::ECONNREFUSED
   $stderr.puts "Error connecting to server: #{$!.message}"
   exit 1
@@ -71,29 +72,16 @@ end
 case cmd
 when "query"
   query = ARGV.first or fail "query argument required"
-  c.send :query,
-         :query => query,
-         :offset => cmd_opts[:offset],
-         :limit => cmd_opts[:limit],
-         :raw => cmd_opts[:raw]
-  while ((x = c.read) && x.first != :done)
-    puts YAML.dump(x[1][:message])
-    puts YAML.dump(x[1][:raw]) if cmd_opts[:raw]
+  c.query query, cmd_opts[:offset], cmd_opts[:limit], cmd_opts[:raw] do |result|
+    puts YAML.dump(result[:message])
+    puts YAML.dump(result[:raw]) if cmd_opts[:raw]
   end
 when "count"
   query = ARGV.first or fail "query argument required"
-  c.send :count,
-         :query => query
-  type, args, = c.read
-  puts args[:count]
+  puts c.count(query)
 when "label"
   query = ARGV.first or fail "query argument required"
-  c.send :label,
-         :query => query,
-         :add => cmd_opts[:add_labels].split(','),
-         :remove => cmd_opts[:remove_labels].split(',')
-  reply = c.read
-  fail "error labelling messages: #{reply.inspect}" unless reply.first == :done
+  c.label query, cmd_opts[:remove_labels].split(','), cmd_opts[:add_labels].split(',')
 when "add"
   ARGF.binmode
   labels = cmd_opts[:labels].split(',')
@@ -115,21 +103,13 @@ when "add"
       t = Time.now
       i_s = i
     end
-    c.send :add,
-           :raw => raw,
-           :labels => labels
-    reply = c.read
-    fail "error adding message: #{reply.inspect}" unless reply.first == :done
+    c.add raw, labels
   end
 when "stream"
   query = ARGV.first or fail "query argument required"
-  c.send :stream,
-         :query => query,
-         :raw => cmd_opts[:raw]
-  while (x = c.read)
-    fail unless x.first == :message
-    puts YAML.dump(x[1][:message])
-    puts YAML.dump(x[1][:raw]) if cmd_opts[:raw]
+  stream query, cmd_opts[:raw] do |result|
+    puts YAML.dump(x[:message])
+    puts YAML.dump(x[:raw]) if cmd_opts[:raw]
   end
 else
   fail "#{cmd} command unimplemented"
