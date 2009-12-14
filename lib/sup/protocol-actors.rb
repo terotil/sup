@@ -17,12 +17,12 @@ module Redwood
 module Protocol
   class BERTFilter
     def encode *o
-			BERT.encode(o).tap { |x| x.force_encoding Encoding::ASCII_8BIT }
+      BERT.encode(o).tap { |x| x.force_encoding Encoding::ASCII_8BIT }
     end
 
-		def decode s
-			[BERT.decode(s)]
-		end
+    def decode s
+      [BERT.decode(s)]
+    end
   end
 
   class MarshalFilter
