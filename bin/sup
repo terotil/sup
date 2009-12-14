@@ -39,6 +39,7 @@ EOS
   opt :search, "Search for this query upon startup", :type => String
   opt :compose, "Compose message to this recipient upon startup", :type => String
   opt :subject, "When composing, use this subject", :type => String, :short => "j"
+  opt :uri, "URI", :default => Redwood::DEFAULT_URI
 end
 
 Trollop::die :subject, "requires --compose" if $opts[:subject] && !$opts[:compose]
@@ -140,6 +141,9 @@ module_function :start_cursing, :stop_cursing
 
 begin
   Redwood::Client.start
+
+  uri = URI.parse($opts[:uri]) rescue Trollop::die("invalid uri #{$opts[:uri].inspect}: #{$!.message}")
+  $connection = Redwood::Protocol::Connection.connect uri
 
   $die = false
   trap("TERM") { |x| $die = true }
