@@ -328,6 +328,9 @@ class ThreadSet
     info opts.inspect
     q = Redwood::Query.from_opts opts
     info $connection.count(q)
+    $connection.query(q, 0, 100, false) do |result|
+      info result.inspect
+    end
 =begin
     @index.each_id_by_date opts do |mid, builder|
       break if size >= num unless num == -1
