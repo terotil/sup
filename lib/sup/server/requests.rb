@@ -86,11 +86,6 @@ class RequestHandler < Actorized
     client << T[:reply, type, args]
   end
 
-  def parse_query s
-    index << T[:parse_query, me, s]
-    expect T[:parsed_query], &_2
-  end
-
   def put_raw raw
     store << T[:put, me, raw]
     expect T[:put_done], &_2
@@ -124,7 +119,7 @@ end
 # one Done after all Messages
 class QueryHandler < RequestHandler
   def run
-    q = parse_query args[:query]
+    q = args[:query]
     fields = args[:fields]
     offset = args[:offset] || 0
     limit = args[:limit]
@@ -154,7 +149,7 @@ end
 # one Count
 class CountHandler < RequestHandler
   def run
-    q = parse_query args[:query]
+    q = args[:query]
     index << T[:count, me, q]
     count = expect T[:counted], &_2
     reply_count :tag => args[:tag], :count => count
@@ -175,7 +170,7 @@ end
 # one Done
 class LabelHandler < RequestHandler
   def run
-    q = parse_query args[:query]
+    q = args[:query]
     add = args[:add] || []
     remove = args[:remove] || []
 
@@ -240,8 +235,8 @@ class StreamHandler < RequestHandler
   end
 
   def get_relevant_summary addr
-    q = parse_query args[:query]
-    q[:source_info] = addr
+    q = args[:query]
+    q = [:and, q, [:term, :source_info, addr]]
     index << T[:query, me, q, 0, 1]
     summary = nil
     msgloop do |f|

@@ -138,148 +138,31 @@ EOS
     true
   end
 
-  class ParseError < StandardError; end
-
-  # TODO move into client?
-  def parse_query s
-    query = {}
-
-    subs = $hooks.run("custom-search", :subs => s) || s
-=begin
-    subs = subs.gsub(/\b(to|from):(\S+)\b/) do
-      field, name = $1, $2
-      if(p = ContactManager.contact_for(name))
-        [field, p.email]
-      elsif name == "me"
-        [field, "(" + AccountManager.user_emails.join("||") + ")"]
-      else
-        [field, name]
-      end.join(":")
-    end
-=end
-
-    ## if we see a label:deleted or a label:spam term anywhere in the query
-    ## string, we set the extra load_spam or load_deleted options to true.
-    ## bizarre? well, because the query allows arbitrary parenthesized boolean
-    ## expressions, without fully parsing the query, we can't tell whether
-    ## the user is explicitly directing us to search spam messages or not.
-    ## e.g. if the string is -(-(-(-(-label:spam)))), does the user want to
-    ## search spam messages or not?
-    ##
-    ## so, we rely on the fact that turning these extra options ON turns OFF
-    ## the adding of "-label:deleted" or "-label:spam" terms at the very
-    ## final stage of query processing. if the user wants to search spam
-    ## messages, not adding that is the right thing; if he doesn't want to
-    ## search spam messages, then not adding it won't have any effect.
-    query[:load_spam] = true if subs =~ /\blabel:spam\b/
-    query[:load_deleted] = true if subs =~ /\blabel:deleted\b/
-
-    ## gmail style "is" operator
-    subs = subs.gsub(/\b(is|has):(\S+)\b/) do
-      field, label = $1, $2
-      case label
-      when "read"
-        "-label:unread"
-      when "spam"
-        query[:load_spam] = true
-        "label:spam"
-      when "deleted"
-        query[:load_deleted] = true
-        "label:deleted"
-      else
-        "label:#{$2}"
-      end
-    end
-
-    ## gmail style attachments "filename" and "filetype" searches
-    subs = subs.gsub(/\b(filename|filetype):(\((.+?)\)\B|(\S+)\b)/) do
-      field, name = $1, ($3 || $4)
-      case field
-      when "filename"
-        debug "filename: translated #{field}:#{name} to attachment:\"#{name.downcase}\""
-        "attachment:\"#{name.downcase}\""
-      when "filetype"
-        debug "filetype: translated #{field}:#{name} to attachment_extension:#{name.downcase}"
-        "attachment_extension:#{name.downcase}"
-      end
-    end
-
-    if $have_chronic
-      lastdate = 2<<32 - 1
-      firstdate = 0
-      subs = subs.gsub(/\b(before|on|in|during|after):(\((.+?)\)\B|(\S+)\b)/) do
-        field, datestr = $1, ($3 || $4)
-        realdate = Chronic.parse datestr, :guess => false, :context => :past
-        if realdate
-          case field
-          when "after"
-            debug "chronic: translated #{field}:#{datestr} to #{realdate.end}"
-            "date:#{realdate.end.to_i}..#{lastdate}"
-          when "before"
-            debug "chronic: translated #{field}:#{datestr} to #{realdate.begin}"
-            "date:#{firstdate}..#{realdate.end.to_i}"
-          else
-            debug "chronic: translated #{field}:#{datestr} to #{realdate}"
-            "date:#{realdate.begin.to_i}..#{realdate.end.to_i}"
-          end
-        else
-          raise ParseError, "can't understand date #{datestr.inspect}"
-        end
-      end
-    end
-
-    ## limit:42 restrict the search to 42 results
-    subs = subs.gsub(/\blimit:(\S+)\b/) do
-      lim = $1
-      if lim =~ /^\d+$/
-        query[:limit] = lim.to_i
-        ''
-      else
-        raise ParseError, "non-numeric limit #{lim.inspect}"
-      end
-    end
-
-    qp = Xapian::QueryParser.new
-    qp.database = @xapian
-    qp.stemmer = Xapian::Stem.new(STEM_LANGUAGE)
-    qp.stemming_strategy = Xapian::QueryParser::STEM_SOME
-    qp.default_op = Xapian::Query::OP_AND
-    qp.add_valuerangeprocessor(Xapian::NumberValueRangeProcessor.new(DATE_VALUENO, 'date:', true))
-    NORMAL_PREFIX.each { |k,v| qp.add_prefix k, v }
-    BOOLEAN_PREFIX.each { |k,v| qp.add_boolean_prefix k, v }
-    xapian_query = qp.parse_query(subs, Xapian::QueryParser::FLAG_PHRASE|Xapian::QueryParser::FLAG_BOOLEAN|Xapian::QueryParser::FLAG_LOVEHATE|Xapian::QueryParser::FLAG_WILDCARD, PREFIX['body'])
-
-    raise ParseError if xapian_query.nil? or xapian_query.empty?
-    query[:qobj] = xapian_query
-    query[:text] = s
-    query
-  end
-
   #private
 
   # Stemmed
   NORMAL_PREFIX = {
-    'subject' => 'S',
-    'body' => 'B',
-    'from_name' => 'FN',
-    'to_name' => 'TN',
-    'name' => 'N',
-    'attachment' => 'A',
+    :subject    => 'S',
+    :body       => 'B',
+    :from_name  => 'FN',
+    :to_name    => 'TN',
+    :name       => 'N',
+    :attachment => 'A',
   }
 
   # Unstemmed
   BOOLEAN_PREFIX = {
-    'type' => 'K',
-    'from_email' => 'FE',
-    'to_email' => 'TE',
-    'email' => 'E',
-    'date' => 'D',
-    'label' => 'L',
-    'attachment_extension' => 'O',
-    'msgid' => 'Q',
-    'thread' => 'H',
-    'ref' => 'R',
-    'source_info' => 'I',
+    :type => 'K',
+    :from_email => 'FE',
+    :to_email => 'TE',
+    :email => 'E',
+    :date => 'D',
+    :label => 'L',
+    :attachment_extension => 'O',
+    :msgid => 'Q',
+    :thread => 'H',
+    :ref => 'R',
+    :source_info => 'I',
   }
 
   PREFIX = NORMAL_PREFIX.merge BOOLEAN_PREFIX
@@ -369,31 +252,36 @@ EOS
                        :labels => e[:labels], :source_info => e[:source_info]
   end
 
-  Q = Xapian::Query
-  def build_xapian_query opts
-    labels = ([opts[:label]] + (opts[:labels] || [])).compact
-    neglabels = [:spam, :deleted, :killed].reject { |l| (labels.include? l) || opts.member?("load_#{l}".intern) }
-    pos_terms, neg_terms = [], []
+  ## This is awful. We want the clients to do the bulk of the work of parsing
+  ## the queries so that they can reliably modify them, but we can't expect
+  ## them to reimplement the exact scheme that Xapian's TermGenerator and
+  ## QueryParser use. Since we use TermGenerator, we need to reconstruct the
+  ## query string and run QueryParser on it.
+  def build_xapian_query q
+    str = query2str q
+    qp = Xapian::QueryParser.new
+    qp.stemmer = Xapian::Stem.new(STEM_LANGUAGE)
+    qp.stemming_strategy = Xapian::QueryParser::STEM_SOME
+    qp.default_op = Xapian::Query::OP_AND
+    qp.add_valuerangeprocessor(Xapian::NumberValueRangeProcessor.new(DATE_VALUENO, 'date:', true))
+    NORMAL_PREFIX.each { |k,v| qp.add_prefix k.to_s, v }
+    BOOLEAN_PREFIX.each { |k,v| qp.add_boolean_prefix k.to_s, v }
+    xapian_query = qp.parse_query(str, Xapian::QueryParser::FLAG_PHRASE|Xapian::QueryParser::FLAG_BOOLEAN|Xapian::QueryParser::FLAG_LOVEHATE|Xapian::QueryParser::FLAG_WILDCARD, PREFIX[:body])
+    fail if xapian_query.nil? or xapian_query.empty?
+    debug "#{q.inspect} -> #{xapian_query.description}"
+    xapian_query
+  end
 
-    pos_terms << mkterm(:type, 'mail')
-    pos_terms.concat(labels.map { |l| mkterm(:label,l) })
-    pos_terms << opts[:qobj] if opts[:qobj]
-    pos_terms << mkterm(:source_info, opts[:source_info]) if opts[:source_info]
-
-    if opts[:participants]
-      participant_terms = opts[:participants].map { |p| mkterm(:email,:any, (Redwood::Person === p) ? p.email : p) }
-      pos_terms << Q.new(Q::OP_OR, participant_terms)
-    end
-
-    neg_terms.concat(neglabels.map { |l| mkterm(:label,l) })
-
-    pos_query = Q.new(Q::OP_AND, pos_terms)
-    neg_query = Q.new(Q::OP_OR, neg_terms)
-
-    if neg_query.empty?
-      pos_query
+  def query2str q
+    type, *args = *q
+    case type
+    when :and, :or, :not
+      op = type.upcase
+      args.map { |x| '(' + query2str(x) + ')' } * " #{op} "
+    when :term
+      args * ':'
     else
-      Q.new(Q::OP_AND_NOT, [pos_query, neg_query])
+      fail "unknown query type #{type}"
     end
   end
 
@@ -445,7 +333,7 @@ EOS
     # Person names are indexed with several prefixes
     person_termer = lambda do |d|
       lambda do |p|
-        ["#{d}_name", "name", "body"].each do |x|
+        [:"#{d}_name", :name, :body].each do |x|
           doc.index_text p.name, PREFIX[x]
         end if p.name
         [d, :any].each { |x| doc.add_term mkterm(:email, x, p.email) }
@@ -458,10 +346,10 @@ EOS
     # Full text search content
     subject_text = m.indexable_subject
     body_text = m.indexable_body
-    doc.index_text subject_text, PREFIX['subject']
-    doc.index_text subject_text, PREFIX['body']
-    doc.index_text body_text, PREFIX['body']
-    m.attachments.each { |a| doc.index_text a, PREFIX['attachment'] }
+    doc.index_text subject_text, PREFIX[:subject]
+    doc.index_text subject_text, PREFIX[:body]
+    doc.index_text body_text, PREFIX[:body]
+    m.attachments.each { |a| doc.index_text a, PREFIX[:attachment] }
 
     # Miscellaneous terms
     doc.add_term mkterm(:date, m.date) if m.date
@@ -531,26 +419,26 @@ EOS
 
   # Construct a Xapian term
   def mkterm type, *args
+    fail "type must be a symbol" unless type.is_a? Symbol
     case type
-    when :label
-      PREFIX['label'] + args[0].to_s.downcase
-    when :type
-      PREFIX['type'] + args[0].to_s.downcase
+    when :label, :type, :attachment_extension
+      PREFIX[type] + args[0].to_s.downcase
     when :date
-      PREFIX['date'] + args[0].getutc.strftime("%Y%m%d%H%M%S")
+      PREFIX[type] + args[0].getutc.strftime("%Y%m%d%H%M%S")
     when :email
       case args[0]
-      when :from then PREFIX['from_email']
-      when :to then PREFIX['to_email']
-      when :any then PREFIX['email']
+      when :from then PREFIX[:from_email]
+      when :to then PREFIX[:to_email]
+      when :any then PREFIX[:email]
       else raise "Invalid email term type #{args[0]}"
       end + args[1].to_s.downcase
-    when :attachment_extension
-      PREFIX['attachment_extension'] + args[0].to_s.downcase
     when :msgid, :ref, :thread
-      PREFIX[type.to_s] + args[0][0...(MAX_TERM_LENGTH-1)]
+      PREFIX[type] + args[0][0...(MAX_TERM_LENGTH-1)]
     when :source_info
-      PREFIX['source_info'] + args[0].to_s
+      PREFIX[type] + args[0].to_s
+    when *NORMAL_PREFIX.keys
+      stemmer = Xapian::Stem.new STEM_LANGUAGE
+      PREFIX[type] + stemmer.call(args[0].to_s)
     else
       raise "Invalid term type #{type}"
     end

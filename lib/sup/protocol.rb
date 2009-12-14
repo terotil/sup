@@ -31,9 +31,10 @@ class Connection
     @io.write(len_s + bert)
   end
 
-  def query querystr, offset, limit, raw
+  def query q, offset, limit, raw
+    Redwood::QueryParser.validate q
     results = []
-    write :query, :query => querystr, :offset => offset, :limit => limit, :raw => raw
+    write :query, :query => q, :offset => offset, :limit => limit, :raw => raw
     while ((x = read) && x[0] != :done)
       fail "expected message, got #{x[0].inspect}" unless x[0] == :message
       if block_given?
@@ -45,8 +46,9 @@ class Connection
     block_given? ? nil : results
   end
 
-  def count querystr
-    write :count, :query => querystr
+  def count q
+    Redwood::QueryParser.validate q
+    write :count, :query => q
     x = read
     x[1][:count]
   end
@@ -56,14 +58,16 @@ class Connection
     read
   end
 
-  def label querystr, remove, add
-    write :label, :query => querystr, :remove => remove, :add => add
+  def label q, remove, add
+    Redwood::QueryParser.validate q
+    write :label, :query => q, :remove => remove, :add => add
     read
   end
 
-  def stream querystr, raw
+  def stream q, raw
+    Redwood::QueryParser.validate q
     send :stream,
-          :query => querystr,
+          :query => q,
           :raw => raw
     while (x = read)
       fail "expected message, got #{x[0].inspect}" unless x[0] == :message

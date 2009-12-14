@@ -325,6 +325,9 @@ class ThreadSet
 
   ## load in (at most) num number of threads from the index
   def load_n_threads num, opts={}
+    info opts.inspect
+    q = Redwood::Query.from_opts opts
+    info $connection.count(q)
 =begin
     @index.each_id_by_date opts do |mid, builder|
       break if size >= num unless num == -1

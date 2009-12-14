@@ -3,6 +3,7 @@
 
 require 'test/unit'
 require 'sup/server'
+require 'sup/queryparser'
 require 'stringio'
 require 'tmpdir'
 require 'fileutils'
@@ -34,6 +35,10 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
+  def q text
+    Redwood::QueryParser.parse text
+  end
+
   def test_add
     with_wire do |w|
       add_messages w
@@ -42,24 +47,24 @@ class TestServer < Test::Unit::TestCase
 
   def test_add_with_labels
     with_wire do |w|
-      w.send :count, :query => 'label:foo'
+      w.send :count, :query => q('label:foo')
       expect w.read, :count, :count => 0
 
       add_messages w, NormalMessages.msgs, [:foo]
 
-      w.send :count, :query => 'label:foo'
+      w.send :count, :query => q('label:foo')
       expect w.read, :count, :count => NormalMessages.msgs.size
     end
   end
 
   def test_count
     with_wire do |w|
-      w.send :count, :query => 'CountTestTerm'
+      w.send :count, :query => q('CountTestTerm')
       expect w.read, :count, :count => 0
 
       add_messages w
 
-      w.send :count, :query => 'CountTestTerm'
+      w.send :count, :query => q('CountTestTerm')
       expect w.read, :count, :count => 1
    end
   end
@@ -67,7 +72,7 @@ class TestServer < Test::Unit::TestCase
   def test_query
     with_wire do |w|
       add_messages w
-      w.send :query, :query => 'QueryTestTerm'
+      w.send :query, :query => q('QueryTestTerm')
       expect w.read, :message
       expect w.read, :message
       expect w.read, :done
@@ -77,7 +82,7 @@ class TestServer < Test::Unit::TestCase
   def test_query_ordering
     with_wire do |w|
       add_messages w
-      w.send :query, :query => 'QueryOrderingTestTerm'
+      w.send :query, :query => q('QueryOrderingTestTerm')
       msgs = []
       while (x = w.read)
         type, args, = x
@@ -95,11 +100,11 @@ class TestServer < Test::Unit::TestCase
   def test_label
     with_wire do |w|
       add_messages w
-      w.send :count, :query => 'label:test'
+      w.send :count, :query => q('label:test')
       expect w.read, :count, :count => 0
-      w.send :label, :query => 'QueryTestTerm', :add => [:test]
+      w.send :label, :query => q('QueryTestTerm'), :add => [:test]
       expect w.read, :done
-      w.send :count, :query => 'label:test'
+      w.send :count, :query => q('label:test')
       expect w.read, :count, :count => 2
     end
   end
@@ -123,7 +128,7 @@ class TestServer < Test::Unit::TestCase
   def test_stream
     with_wires(2) do |w1, w2|
       a = []
-      w1.send :stream, :query => 'type:mail'
+      w1.send :stream, :query => q('type:mail')
       reader = Reader.spawn w1, a
       add_messages w2
       Actor.sleep 1
@@ -136,7 +141,7 @@ class TestServer < Test::Unit::TestCase
     msgs = NormalMessages.msgs
     with_wires(2) do |w1, w2|
       a = []
-      w1.send :stream, :query => 'type:mail', :tag => 42
+      w1.send :stream, :query => q('type:mail'), :tag => 42
       reader = Reader.spawn w1, a
 
       add_messages w2, [msgs[0]]
@@ -156,7 +161,7 @@ class TestServer < Test::Unit::TestCase
   def test_multiple_accept
     with_wires(2) do |w1,w2|
       add_messages w1
-      w2.send :count, :query => 'type:mail'
+      w2.send :count, :query => q('type:mail')
       expect w2.read, :count, :count => NormalMessages.msgs.size
     end
   end

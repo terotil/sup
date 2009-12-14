@@ -4,6 +4,7 @@ require 'rubygems'
 require 'revactor'
 require 'trollop'
 require 'sup'
+require 'sup/queryparser'
 require 'sup/protocol'
 require 'sup/protocol-actors'
 require 'sup/util/mbox'
@@ -69,19 +70,21 @@ rescue Errno::ECONNREFUSED
   exit 1
 end
 
+def get_query
+  text = ARGV.first or fail "query argument required"
+  Redwood::QueryParser.parse text
+end
+
 case cmd
 when "query"
-  query = ARGV.first or fail "query argument required"
-  c.query query, cmd_opts[:offset], cmd_opts[:limit], cmd_opts[:raw] do |result|
+  c.query get_query, cmd_opts[:offset], cmd_opts[:limit], cmd_opts[:raw] do |result|
     puts YAML.dump(result[:message])
     puts YAML.dump(result[:raw]) if cmd_opts[:raw]
   end
 when "count"
-  query = ARGV.first or fail "query argument required"
-  puts c.count(query)
+  puts c.count(get_query)
 when "label"
-  query = ARGV.first or fail "query argument required"
-  c.label query, cmd_opts[:remove_labels].split(','), cmd_opts[:add_labels].split(',')
+  c.label get_query, cmd_opts[:remove_labels].split(','), cmd_opts[:add_labels].split(',')
 when "add"
   ARGF.binmode
   labels = cmd_opts[:labels].split(',')
@@ -106,8 +109,7 @@ when "add"
     c.add raw, labels
   end
 when "stream"
-  query = ARGV.first or fail "query argument required"
-  stream query, cmd_opts[:raw] do |result|
+  stream get_query, cmd_opts[:raw] do |result|
     puts YAML.dump(x[:message])
     puts YAML.dump(x[:raw]) if cmd_opts[:raw]
   end

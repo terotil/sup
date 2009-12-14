@@ -25,7 +25,7 @@ class LabelSearchResultsMode < ThreadIndexMode
   def is_relevant? m; @labels.all? { |l| m.has_label? l } end
 
   def self.spawn_nicely label
-    label = LabelManager.label_for(label) unless label.is_a?(Symbol)
+    label = $labels.label_for(label) unless label.is_a?(Symbol)
     case label
     when nil
     when :inbox

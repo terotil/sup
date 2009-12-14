@@ -26,13 +26,13 @@ class SearchResultsMode < ThreadIndexMode
 
   def self.spawn_from_query text
     begin
-      query = Index.parse_query(text)
+      query = Redwood::QueryParser.parse(text)
       return unless query
       short_text = text.length < 20 ? text : text[0 ... 20] + "..."
-      mode = SearchResultsMode.new query
+      mode = SearchResultsMode.new :qobj => query
       $buffers.spawn "search: \"#{short_text}\"", mode
       mode.load_threads :num => mode.buffer.content_height
-    rescue Index::ParseError => e
+    rescue QueryParser::ParseError => e
       $buffers.flash "Problem: #{e.message}!"
     end
   end

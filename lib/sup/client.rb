@@ -149,6 +149,8 @@ require "sup/client/contact"
 require "sup/client/tagger"
 require "sup/client/poll"
 require "sup/crypto"
+require 'sup/query'
+require 'sup/queryparser'
 require "sup/client/undo"
 require "sup/client/horizontal-selector"
 require "sup/client/modes/line-cursor-mode"

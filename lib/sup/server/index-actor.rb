@@ -6,10 +6,6 @@ module Server
 class IndexActor < Actorized
   def run index
     main_msgloop do |f|
-      f.when(T[:parse_query]) do |_,a,s|
-        a << [:parsed_query, index.parse_query(s)]
-      end
-
       f.when(T[:query]) do |_,a,q,offset,limit|
         index.each_summary(q,offset,limit) { |x| a << T[:query_result, x] }
         a << :query_finished
