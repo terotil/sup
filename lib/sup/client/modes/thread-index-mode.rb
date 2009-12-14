@@ -595,17 +595,6 @@ EOS
     ForwardMode.spawn_nicely :message => m
   end
 
-  def load_n_threads_background n=LOAD_MORE_THREAD_NUM, opts={}
-    return if @load_thread # todo: wrap in mutex
-=begin
-    @load_thread = Redwood::reporting_thread("load threads for thread-index-mode") do
-      num = load_n_threads n, opts
-      opts[:when_done].call(num) if opts[:when_done]
-      @load_thread = nil
-    end
-=end
-  end
-
   ## TODO: figure out @ts_mutex in this method
   def load_n_threads n=LOAD_MORE_THREAD_NUM, opts={}
     @interrupt_search = false
@@ -626,7 +615,7 @@ EOS
       ::Thread.pass
       break if @interrupt_search
     end
-    @ts.threads.each { |th| th.labels.each { |l| LabelManager << l } }
+    @ts.threads.each { |th| th.labels.each { |l| $labels << l } }
 
     update
     $buffers.clear @mbid
@@ -669,11 +658,7 @@ EOS
       end
     end)})
 
-    if opts[:background] || opts[:background].nil?
-      load_n_threads_background n, myopts
-    else
-      load_n_threads n, myopts
-    end
+    load_n_threads n, myopts
   end
   ignore_concurrent_calls :load_threads
 
