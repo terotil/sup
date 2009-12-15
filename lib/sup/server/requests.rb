@@ -1,9 +1,3 @@
-## Requests
-##
-## There may be zero or more replies to a request. Multiple requests may be
-## issued concurrently. <tag> is an opaque object returned in all replies to
-## the request.
-
 module Redwood::Server
 
 class RequestHandler < Actorized
@@ -37,46 +31,18 @@ class RequestHandler < Actorized
     }
   end
 
-  # Done reply
-  #
-  # Parameters
-  # tag: opaque object
   def reply_done args
     respond client, :done, args
   end
 
-  # Message reply
-  #
-  # Parameters
-  # tag: opaque object
-  # message:
-  #   message_id
-  #   date
-  #   from
-  #   to, cc, bcc: List of [email, name]
-  #   subject
-  #   refs
-  #   replytos
-  #   labels
   def reply_message args
     respond client, :message, args
   end
 
-  # Count reply
-  #
-  # Parameters
-  # tag: opaque object
-  # count: number of messages matched
   def reply_count args
     respond client, :count, args
   end
 
-  # Error reply
-  #
-  # Parameters
-  # tag: opaque object
-  # type: symbol
-  # message: string
   def reply_error args
     respond client, :error, args
   end
@@ -102,21 +68,6 @@ class RequestHandler < Actorized
   end
 end
 
-# Query request
-#
-# Send a Message reply for each hit on <query>. <offset> and <limit>
-# influence which results are returned.
-#
-# Parameters
-# tag: opaque object
-# query: Xapian query string
-# offset: skip this many messages
-# limit: return at most this many messages
-# raw: include the raw message text
-#
-# Responses
-# multiple Message
-# one Done after all Messages
 class QueryHandler < RequestHandler
   def run
     q = args[:query]
@@ -137,16 +88,6 @@ class QueryHandler < RequestHandler
   end
 end
 
-# Count request
-#
-# Send a count reply with the number of hits for <query>.
-#
-# Parameters
-# tag: opaque object
-# query: Xapian query string
-#
-# Responses
-# one Count
 class CountHandler < RequestHandler
   def run
     q = args[:query]
@@ -156,18 +97,6 @@ class CountHandler < RequestHandler
   end
 end
 
-# Label request
-#
-# Modify the labels on all messages matching <query>.
-#
-# Parameters
-# tag: opaque object
-# query: Xapian query string
-# add: labels to add
-# remove: labels to remove
-#
-# Responses
-# one Done
 class LabelHandler < RequestHandler
   def run
     q = args[:query]
@@ -190,17 +119,6 @@ class LabelHandler < RequestHandler
 
 end
 
-# Add request
-#
-# Add a message to the database. <raw> is the normal RFC 2822 message text.
-#
-# Parameters
-# tag: opaque object
-# raw: message data
-# labels: initial labels
-#
-# Responses
-# one Done
 class AddHandler < RequestHandler
   def run
     raw = args[:raw]
@@ -213,14 +131,6 @@ class AddHandler < RequestHandler
   end
 end
 
-# Stream request
-#
-# Parameters
-# tag: opaque object
-# query: Xapian query string
-#
-# Responses
-# multiple Message
 class StreamHandler < RequestHandler
   def run
     server << T[:subscribe, me]
@@ -251,14 +161,6 @@ class StreamHandler < RequestHandler
   end
 end
 
-# Cancel request
-#
-# Parameters
-# tag: opaque object
-# target: tag of the request to cancel
-#
-# Responses
-# one Done
 class CancelHandler < RequestHandler
   def run
     server << T[:publish, T[:cancel, args[:tag]]]
