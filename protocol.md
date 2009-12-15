@@ -1,14 +1,12 @@
 Redwood Protocol
 ================
 
-On the wire, messages consist of a 4-byte big endian integer `size`
-followed by `size` bytes of BERT-encoded data. The decoded message is
-either a request or a response, depending on whether the sender is a
-client or server.
+Messages are transmitted as JSON. Messages may be either a request or a
+response, depending on whether the sender is a client or server.
 
 Requests and responses are represented as `[type, params]`, where `type`
-is a lowercase symbol corresponding to one of the messages specified
-below and `params` is a dictionary with symbol keys.
+is a lowercase string corresponding to one of the message types specified
+below and `params` is a dictionary with string keys.
 
 Requests
 --------
@@ -140,7 +138,7 @@ Query can be any of the following:
 
 ### Message
 *   `message_id`: string
-*   `date`: BERT time object
+*   `date`: time
 *   `from`: Person
 *   `to`, `cc`, `bcc`: Person list
 *   `subject`: string
@@ -159,6 +157,5 @@ TODO
 
 *   Protocol negotiation
    -   Version
-   -   Encoding (BERT, JSON, Marshal, ...)
    -   Compression (none, gzip, ...)
 *   Specify string encodings
