@@ -18,7 +18,7 @@ influence which results are returned.
 *   `query`: Xapian query string
 *   `offset`: skip this many messages
 *   `limit`: return at most this many messages
-*   `raw:` include the raw message text
+*   `raw`: include the raw message text in the response
 
 #### Responses
 *   multiple Message
@@ -91,14 +91,14 @@ Responses
 #### Parameters
 *   `tag`: opaque object
 *   `message`:
-  *   `message_id`
-  *   `date`
-  *   `from`
-  *   `to`, `cc`, `bcc`: List of [`email`, `name`]
-  *   `subject`
-  *   `refs`
-  *   `replytos`
-  *   `labels`
+   -   `message_id`
+   -   `date`
+   -   `from`
+   -   `to`, `cc`, `bcc`: List of [`email`, `name`]
+   -   `subject`
+   -   `refs`
+   -   `replytos`
+   -   `labels`
 
 ### Count
 
