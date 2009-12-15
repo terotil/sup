@@ -1,6 +1,15 @@
 Sup Protocol
 ============
 
+On the wire, messages consist of a 4-byte big endian integer `size`
+followed by `size` bytes of BERT-encoded data. The decoded message is
+either a request or a response, depending on whether the sender is a
+client or server.
+
+Requests and responses are represented as `[type, params]`, where `type`
+is a lowercase symbol corresponding to one of the messages specified
+below and `params` is a dictionary with symbol keys.
+
 Requests
 --------
 
@@ -113,6 +122,8 @@ text that was previously a parameter to the Add request.
 *   `type`: string
 *   `message`: string
 
+
+
 Datatypes
 ---------
 
@@ -141,3 +152,13 @@ Query can be any of the following:
 ### Person
 *   `name`: string
 *   `email`: string
+
+
+TODO
+----
+
+*   Protocol negotiation
+   -   Version
+   -   Encoding (BERT, JSON, Marshal, ...)
+   -   Compression (none, gzip, ...)
+*   Specify string encodings
