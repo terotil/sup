@@ -86,13 +86,13 @@ class TestServer < Test::Unit::TestCase
       msgs = []
       while (x = w.read)
         type, args, = x
-        break if type == :done
+        break if type == 'done'
         expect x, :message
-        msgs << args[:message]
+        msgs << args['message']
       end
 
       assert_operator msgs.size, :>, 1
-      dates = msgs.map { |m| m[:date] }
+      dates = msgs.map { |m| m['date'] }
       dates.inject { |b,v| assert_operator b, :>=, v; v }
     end
   end
@@ -180,9 +180,9 @@ class TestServer < Test::Unit::TestCase
   end
 
   def expect resp, type, args={}
-    assert_equal type, resp[0]
+    assert_equal type.to_s, resp[0]
     args.each do |k,v|
-      assert_equal v, resp[1][k]
+      assert_equal v, resp[1][k.to_s]
     end
   end
 end

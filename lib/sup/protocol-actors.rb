@@ -1,42 +1,42 @@
 # encoding: utf-8
 require 'sup/actor'
+require 'pp'
 
 class Revactor::TCP::Socket
   def send *o
-    write o
+    write [o]
   end
 end
 
 class Revactor::UNIX::Socket
   def send *o
-    write o
+    write [o]
   end
 end
 
 module Redwood
 module Protocol
-  class BERTFilter
-    def encode *o
-      o = Redwood::Protocol.bert_binify(o)
-      BERT.encode(o).tap { |x| x.force_encoding Encoding::ASCII_8BIT }
+  class JSONFilter
+    def initialize
+      @parser = Yajl::Parser.new
     end
 
-    def decode s
-      [Redwood::Protocol.bert_unbinify(BERT.decode(s))]
+    def decode data
+      os = []
+      @parser.on_parse_complete = lambda do |(type,args)|
+        fail unless type.is_a? String and args.is_a? Hash
+        os << [type, args]
+      end
+      @parser << data
+      os
+    end
+
+    def encode *os
+      os.inject('') { |s, o| s << Yajl::Encoder.encode(o) }
     end
   end
 
-  class MarshalFilter
-    def encode *o
-      Marshal.dump(o)
-    end
-
-    def decode s
-      [Marshal.load(s)]
-    end
-  end
-
-  FILTERS = [T[Revactor::Filter::Packet, 4], BERTFilter]
+  FILTERS = [JSONFilter]
 
   class GenericListener < Actorized
     def run server, l, accept

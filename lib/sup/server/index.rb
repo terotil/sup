@@ -275,13 +275,13 @@ EOS
   def query2str q
     type, *args = *q
     case type
-    when :and, :or, :not
+    when 'and', 'or', 'not'
       op = type.upcase
       args.map { |x| '(' + query2str(x) + ')' } * " #{op} "
-    when :term
+    when 'term'
       args * ':'
     else
-      fail "unknown query type #{type}"
+      fail "unknown query type #{type.inspect}"
     end
   end
 
@@ -419,8 +419,7 @@ EOS
 
   # Construct a Xapian term
   def mkterm type, *args
-    fail "type must be a symbol" unless type.is_a? Symbol
-    case type
+    case type.to_sym
     when :label, :type, :attachment_extension
       PREFIX[type] + args[0].to_s.downcase
     when :date

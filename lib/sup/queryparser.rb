@@ -17,14 +17,14 @@ module QueryParser
       end
       xs = x.split(':', 2)
       f, v = *(xs[1] ? xs : [DEFAULT_FIELD, xs[0]])
-      term = [:term, f.to_sym, v]
+      term = ['term', f, v]
       (pos ? pos_terms : neg_terms) << term
     end
 
     if neg_terms.empty?
-      [:and, *pos_terms]
+      ['and', *pos_terms]
     else
-      [:and_not, pos_terms, neg_terms]
+      ['not', pos_terms, neg_terms]
     end
   end
 

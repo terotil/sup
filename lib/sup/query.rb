@@ -2,19 +2,19 @@ module Redwood
 
 module Query
   def and *qs
-    [:and, *qs]
+    ['and', *qs]
   end
 
   def or *qs
-    [:or, *qs]
+    ['or', *qs]
   end
 
   def not q1, q2
-    [:not, q1, q2]
+    ['not', q1, q2]
   end
 
   def term field, value
-    [:term, field.to_s, value.to_s]
+    ['term', field.to_s, value.to_s]
   end
 
   Q = self

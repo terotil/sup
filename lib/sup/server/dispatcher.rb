@@ -28,12 +28,12 @@ class ClientConnection < Actorized
         debug_msg type, args
         args ||= {}
         klass = case type
-        when :query then QueryHandler
-        when :count then CountHandler
-        when :label then LabelHandler
-        when :add then AddHandler
-        when :stream then StreamHandler
-        when :cancel then CancelHandler
+        when 'query' then QueryHandler
+        when 'count' then CountHandler
+        when 'label' then LabelHandler
+        when 'add' then AddHandler
+        when 'stream' then StreamHandler
+        when 'cancel' then CancelHandler
         else
           puts "unknown request #{type.inspect}"
           #reply_error :tag => args[:tag], :type => :uknown_request, :message => "Unknown request"
@@ -43,7 +43,7 @@ class ClientConnection < Actorized
       end
 
       f.when(T[:reply]) do |_,type,args|
-        wire.write [type,args]
+        wire.write [[type,args]]
       end
 
       f.ignore T[:unix_closed]

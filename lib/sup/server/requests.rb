@@ -5,7 +5,7 @@ class RequestHandler < Actorized
 
   def initialize client, args
     @client = client
-    @args = args
+    @args = SavingHash.new { |k| args[k.to_s] }
     @dispatcher = client[:dispatcher]
     super()
   end
@@ -146,7 +146,7 @@ class StreamHandler < RequestHandler
 
   def get_relevant_summary addr
     q = args[:query]
-    q = [:and, q, [:term, :source_info, addr]]
+    q = ['and', q, ['term', 'source_info', addr]]
     index << T[:query, me, q, 0, 1]
     summary = nil
     msgloop do |f|
