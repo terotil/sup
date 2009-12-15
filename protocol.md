@@ -5,110 +5,139 @@ Requests
 --------
 
 There may be zero or more replies to a request. Multiple requests may be
-issued concurrently. `tag` is an opaque object returned in all replies to
-the request.
+issued concurrently. There is an implicit, optional, opaque `tag` parameter to
+every request which will be returned in all replies to the request to
+aid clients in keeping multiple requests in flight. `tag` may be an
+arbitrary datastructure and for the purposes of Cancel defaults to nil.
 
 ### Query
-
-Send a Message reply for each hit on `query`. `offset` and `limit`
-influence which results are returned.
+Send a Message response for each hit on `query` starting at `offset`
+and sending a maximum of `limit` Messages responses. `raw` controls
+whether the raw message text is included in the response.
 
 #### Parameters
-*   `tag`: opaque object
-*   `query`: Xapian query string
-*   `offset`: skip this many messages
-*   `limit`: return at most this many messages
-*   `raw`: include the raw message text in the response
+*   `query`: Query
+*   `offset`: int
+*   `limit`: int
+*   `raw`: boolean
 
 #### Responses
 *   multiple Message
 *   one Done after all Messages
 
-### Count
 
+### Count
 Send a count reply with the number of hits for `query`.
 
 #### Parameters
-*   `tag`: opaque object
-*   `query`: Xapian query string
+*   `query`: Query
 
 #### Responses
 *   one Count
 
-### Label
 
-Modify the labels on all messages matching `query`.
+### Label
+Modify the labels on all messages matching `query`. First removes the
+labels in `remove` then adds those in `add`.
 
 #### Parameters
-*   `tag`: opaque object
-*   `query`: Xapian query string
-*   `add`: labels to add
-*   `remove`: labels to remove
+*   `query`: Query
+*   `add`: string list
+*   `remove`: string list
 
 #### Responses
 *   one Done
 
-### Add
 
+### Add
 Add a message to the database. `raw` is the normal RFC 2822 message text.
 
 #### Parameters
-*   `tag`: opaque object
-*   `raw`: message data
-*   `labels`: initial labels
+*   `raw`: string
+*   `labels`: string list
 
 #### Responses
 *   one Done
 
+
 ### Stream
+Sends a Message response whenever a new message that matches `query` is
+added with the Add request. This request will not terminate until a
+corresponding Cancel request is sent.
 
 #### Parameters
-*   `tag`: opaque object
-*   `query`: Xapian query string
+*   `query`: Query
 
 #### Responses
 multiple Message
 
+
 ### Cancel
+Cancels all active requests with tag `target`. This is only required to
+be implemented for the Stream request.
 
 #### Parameters
-*   `tag`: opaque object
-*   `target`: tag of the request to cancel
+*   `target`: string
 
 #### Responses
 one Done
+
+
 
 Responses
 ---------
 
 ### Done
+Signifies that a request has completed successfully.
 
-#### Parameters
-*   `tag`: opaque object
 
 ### Message
+Represents a query result. If `raw` is present it is the raw message
+text that was previously a parameter to the Add request.
 
 #### Parameters
-*   `tag`: opaque object
-*   `message`:
-   -   `message_id`
-   -   `date`
-   -   `from`
-   -   `to`, `cc`, `bcc`: List of [`email`, `name`]
-   -   `subject`
-   -   `refs`
-   -   `replytos`
-   -   `labels`
+*   `message`: Message
+*   `raw`: optional string
+
 
 ### Count
+`count` is the number of messages matched.
 
 #### Parameters
-*   `tag`: opaque object
-*   `count`: number of messages matched
+*   `count`: int
+
 
 ### Error
 
 #### Parameters
-*   `tag`: opaque object
-*   `type`: symbol
+*   `type`: string
 *   `message`: string
+
+Datatypes
+---------
+
+### Query
+Recursive prefix-notation datastructure describing a boolean condition.
+Where `a` and `b` are Queries and `field` and `value` are strings, a
+Query can be any of the following:
+
+*   `[:and, a, b, ...]`
+*   `[:or, a, b, ...]`
+*   `[:not, a, b]`
+*   `[:term, field, value]`
+
+
+### Message
+*   `message_id`: string
+*   `date`: BERT time object
+*   `from`: Person
+*   `to`, `cc`, `bcc`: Person list
+*   `subject`: string
+*   `refs`: string list
+*   `replytos`: string list
+*   `labels`: string list
+
+
+### Person
+*   `name`: string
+*   `email`: string
