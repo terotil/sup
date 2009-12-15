@@ -1,5 +1,5 @@
-Sup Protocol
-============
+Redwood Protocol
+================
 
 On the wire, messages consist of a 4-byte big endian integer `size`
 followed by `size` bytes of BERT-encoded data. The decoded message is
