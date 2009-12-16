@@ -337,6 +337,12 @@ class ThreadSet
                        :snippet => (e[:snippet]||'')
   end
 
+  def make_message result
+    raw = result['raw']
+    raw.force_encoding Encoding::ASCII_8BIT
+    Redwood::Message.parse raw
+  end
+
   PAGE_SIZE = 100
   ## load in (at most) num number of threads from the index
   def load_n_threads num, opts={}
@@ -345,13 +351,14 @@ class ThreadSet
     offset = 0
     while size < num
       found = 0
-      $connection.query(q, offset, PAGE_SIZE, false) do |result|
+      $connection.query(q, offset, PAGE_SIZE, opts[:raw]) do |result|
+        next if size >= num unless num == -1
         found += 1
-        m = make_summary result
+        fail result.inspect if opts[:raw] and not result['raw']
+        m = result['raw'] ? make_message(result) : make_summary(result)
         next if contains_id? m.id
         load_thread_for_message m, :skip_killed => opts[:skip_killed], :load_deleted => opts[:load_deleted], :load_spam => opts[:load_spam]
         yield size if block_given?
-        break if size >= num unless num == -1
       end
       break unless found > 0
       offset += PAGE_SIZE
