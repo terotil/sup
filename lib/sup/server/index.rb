@@ -216,6 +216,7 @@ EOS
   end
 
   def run_query xapian_query, offset, limit, checkatleast=0
+    limit ||= @xapian.doccount
     @enquire.query = xapian_query
     @enquire.mset(offset, limit, checkatleast)
   end
