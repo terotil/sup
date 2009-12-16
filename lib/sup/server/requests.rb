@@ -14,23 +14,6 @@ class RequestHandler < Actorized
   def store; dispatcher[:store]; end
   def server; dispatcher; end
 
-  def message_from_summary summary
-    extract_person = lambda { |p| [p.email, p.name] }
-    extract_people = lambda { |ps| ps.map(&extract_person) }
-    {
-      :message_id => summary.id,
-      :date => summary.date,
-      :from => extract_person[summary.from],
-      :to => extract_people[summary.to],
-      :cc => extract_people[summary.cc],
-      :bcc => extract_people[summary.bcc],
-      :subject => summary.subj,
-      :refs => summary.refs,
-      :replytos => summary.replytos,
-      :labels => summary.labels.to_a,
-    }
-  end
-
   def reply_done args
     respond client, :done, args
   end
@@ -78,9 +61,8 @@ class QueryHandler < RequestHandler
     index << T[:query, me, q, offset, limit]
     main_msgloop do |f|
       f.when(T[:query_result]) do |_,summary|
-        message = message_from_summary summary
-        raw = args[:raw] ? get_raw(summary.source_info) : nil
-        reply_message :tag => args[:tag], :message => message, :raw => raw
+        raw = args[:raw] ? get_raw(summary[:source_info]) : nil
+        reply_message :tag => args[:tag], :message => summary, :raw => raw
       end
       f.die? :query_finished
     end
@@ -106,9 +88,9 @@ class LabelHandler < RequestHandler
     index << T[:query, me, q, 0, nil]
     main_msgloop do |f|
       f.when(T[:query_result]) do |_,summary|
-        labels = summary.labels - remove + add
-        raw = get_raw summary.source_info
-        m = Redwood::Message.parse raw, :labels => labels, :source_info => summary.source_info
+        labels = summary[:labels] - remove + add
+        raw = get_raw summary[:source_info]
+        m = Redwood::Message.parse raw, :labels => labels, :source_info => summary[:source_info]
         index_message m
       end
       f.die? :query_finished
@@ -139,7 +121,7 @@ class StreamHandler < RequestHandler
       f.when(T[:new_message]) do |_,addr|
         next unless summary = get_relevant_summary(addr)
         raw = args[:raw] ? get_raw(addr) : nil
-        reply_message :tag => args[:tag], :message => message_from_summary(summary), :raw => raw
+        reply_message :tag => args[:tag], :message => summary, :raw => raw
       end
       f.die? T[:cancel, args[:tag]]
     end

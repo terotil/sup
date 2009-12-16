@@ -229,16 +229,7 @@ EOS
   def build_summary doc
     e = Marshal.load doc.data
     return unless e
-
-    mk_person = lambda { |x| Redwood::Person.new(*x.reverse!) }
-
-    Redwood::MessageSummary.new :id => e[:message_id], :from => mk_person[e[:from]],
-                       :date => e[:date], :subj => e[:subject],
-                       :to => e[:to].map(&mk_person), :cc => e[:cc].map(&mk_person),
-                       :bcc => e[:bcc].map(&mk_person),
-                       :refs => e[:refs], :replytos => e[:replytos],
-                       :labels => e[:labels], :source_info => e[:source_info],
-                       :snippet => (e[:snippet]||'')
+    e ## TODO filter out any internal data
   end
 
   ## This is awful. We want the clients to do the bulk of the work of parsing
