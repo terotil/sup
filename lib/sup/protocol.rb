@@ -10,6 +10,7 @@ class Connection
   def initialize io
     @io = io
     @parsed = []
+    @parser = Yajl::Parser.new
   end
 
   def self.connect uri
@@ -23,7 +24,8 @@ class Connection
   def read
     while @parsed.empty?
       chunk = @io.readpartial 1024
-      Yajl::Parser.parse(chunk) { |o| $stderr.puts("parsed #{o.inspect}"); @parsed << o }
+      @parser.on_parse_complete = lambda { |o| debug("parsed #{o.inspect}"); @parsed << o }
+      @parser << chunk
     end
     type, args = @parsed.shift
     fail unless type.is_a? String and args.is_a? Hash
