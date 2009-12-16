@@ -27,6 +27,7 @@ module Query
     pos_terms.concat(labels.map { |l| term(:label,l) })
     pos_terms << opts[:qobj] if opts[:qobj]
     pos_terms << term(:source_info, opts[:source_info]) if opts[:source_info]
+    pos_terms << term(:msgid, opts[:msgid]) if opts[:msgid]
 
     if opts[:participants]
       participant_terms = opts[:participants].map { |p| term(:email,:any, (Redwood::Person === p) ? p.email : p) }
