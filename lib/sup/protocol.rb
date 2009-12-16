@@ -10,7 +10,7 @@ class Connection
   def initialize io
     @io = io
     @parsed = []
-    @parser = Yajl::Parser.new
+    @parser = Yajl::Parser.new :check_utf8 => false
   end
 
   def self.connect uri
@@ -26,7 +26,6 @@ class Connection
     when String
       x = x.dup
       x.force_encoding Encoding::UTF_8
-      x.debug_check if x.respond_to? :debug_check
       x
     when Hash
       Hash[x.map { |k,v| [fix_encoding(k), fix_encoding(v)] }]
