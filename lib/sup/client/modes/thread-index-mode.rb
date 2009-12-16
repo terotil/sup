@@ -99,28 +99,24 @@ EOS
   def select t=nil, when_done=nil
     t ||= cursor_thread or return
 
-    Redwood::reporting_thread("load messages for thread-view-mode") do
-      num = t.size
-      message = "Loading #{num.pluralize 'message body'}..."
-      $buffers.say(message) do |sid|
-        t.each_with_index do |(m, *o), i|
-          next unless m
-          $buffers.say "#{message} (#{i}/#{num})", sid if t.size > 1
-          m.load_from_source! 
-        end
-      end
-      mode = ThreadViewMode.new t, @hidden_labels, self
-      $buffers.spawn t.subj, mode
-      $buffers.draw_screen
-      mode.jump_to_first_open
-      $buffers.draw_screen # lame TODO: make this unnecessary
-      ## the first draw_screen is needed before topline and botline
-      ## are set, and the second to show the cursor having moved
+    msgid = t.first.id
+    ts = ThreadSet.new
+    ts.load_n_threads 1, :msgid => msgid, :raw => true
+    fail unless ts.size >= 1
+    t = ts.threads.first
+    fail unless t.is_a? Thread
+    t.each { |m,d,p| fail "unexpected #{m.inspect}" unless m.is_a? Redwood::Message }
 
-      update_text_for_line curpos
-      UpdateManager.relay self, :read, t.first
-      when_done.call if when_done
-    end
+    mode = ThreadViewMode.new t, @hidden_labels, self
+    $buffers.spawn t.subj, mode
+    $buffers.draw_screen
+    mode.jump_to_first_open
+    $buffers.draw_screen # lame TODO: make this unnecessary
+    ## the first draw_screen is needed before topline and botline
+    ## are set, and the second to show the cursor having moved
+
+    update_text_for_line curpos
+    when_done.call if when_done
   end
 
   def multi_select threads

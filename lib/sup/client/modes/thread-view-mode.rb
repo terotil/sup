@@ -133,8 +133,8 @@ EOS
     @layout[latest].state = :open if @layout[latest].state == :closed
     @layout[earliest].state = :detailed if earliest.has_label?(:unread) || @thread.size == 1
 
-    @thread.remove_label :unread
-    Index.save_thread @thread
+    #@thread.remove_label :unread
+    #Index.save_thread @thread
     regen_text
   end
 
