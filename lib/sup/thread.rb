@@ -343,42 +343,25 @@ class ThreadSet
     info opts.inspect
     q = Redwood::Query.from_opts opts
     offset = 0
-    loop do
-      found = false
-      info "querying for #{offset}...#{offset+PAGE_SIZE}"
+    while size < num
+      found = 0
       $connection.query(q, offset, PAGE_SIZE, false) do |result|
-        found = true
+        found += 1
         m = make_summary result
-        break if size >= num unless num == -1
         next if contains_id? m.id
-        add_message m
+        load_thread_for_message m, :skip_killed => opts[:skip_killed], :load_deleted => opts[:load_deleted], :load_spam => opts[:load_spam]
         yield size if block_given?
+        break if size >= num unless num == -1
       end
-      break unless found
+      break unless found > 0
       offset += PAGE_SIZE
     end
-=begin
-    @index.each_id_by_date opts do |mid, builder|
-      break if size >= num unless num == -1
-      next if contains_id? mid
-
-      m = builder.call
-      load_thread_for_message m, :skip_killed => opts[:skip_killed], :load_deleted => opts[:load_deleted], :load_spam => opts[:load_spam]
-      yield size if block_given?
-    end
-=end
   end
 
   ## loads in all messages needed to thread m
   ## may do nothing if m's thread is killed
   def load_thread_for_message m, opts={}
-=begin
-    good = @index.each_message_in_thread_for m, opts do |mid, builder|
-      next if contains_id? mid
-      add_message builder.call
-    end
-    add_message m if good
-=end
+    add_message m
   end
 
   ## merges in a pre-loaded thread
