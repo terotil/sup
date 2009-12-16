@@ -26,7 +26,7 @@ class Connection
     when String
       x = x.dup
       x.force_encoding Encoding::UTF_8
-      x.check
+      x.debug_check if x.respond_to? :debug_check
       x
     when Hash
       Hash[x.map { |k,v| [fix_encoding(k), fix_encoding(v)] }]
@@ -40,7 +40,7 @@ class Connection
   def read
     while @parsed.empty?
       chunk = @io.readpartial 1024
-      @parser.on_parse_complete = lambda { |o| debug("parsed #{o.inspect}"); @parsed << o }
+      @parser.on_parse_complete = lambda { |o| @parsed << o }
       @parser << chunk
     end
     type, args = @parsed.shift

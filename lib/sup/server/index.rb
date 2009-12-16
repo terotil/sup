@@ -249,7 +249,8 @@ EOS
                        :to => e[:to].map(&mk_person), :cc => e[:cc].map(&mk_person),
                        :bcc => e[:bcc].map(&mk_person),
                        :refs => e[:refs], :replytos => e[:replytos],
-                       :labels => e[:labels], :source_info => e[:source_info]
+                       :labels => e[:labels], :source_info => e[:source_info],
+                       :snippet => (e[:snippet]||'')
   end
 
   ## This is awful. We want the clients to do the bulk of the work of parsing
