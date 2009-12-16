@@ -337,15 +337,25 @@ class ThreadSet
                        :snippet => (e[:snippet]||'')
   end
 
+  PAGE_SIZE = 100
   ## load in (at most) num number of threads from the index
   def load_n_threads num, opts={}
     info opts.inspect
     q = Redwood::Query.from_opts opts
-    info $connection.count(q)
-    $connection.query(q, 0, 100, false) do |result|
-      info result.inspect
-      m = make_summary result
-      add_message m
+    offset = 0
+    loop do
+      found = false
+      info "querying for #{offset}...#{offset+PAGE_SIZE}"
+      $connection.query(q, offset, PAGE_SIZE, false) do |result|
+        found = true
+        m = make_summary result
+        break if size >= num unless num == -1
+        next if contains_id? m.id
+        add_message m
+        yield size if block_given?
+      end
+      break unless found
+      offset += PAGE_SIZE
     end
 =begin
     @index.each_id_by_date opts do |mid, builder|

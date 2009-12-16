@@ -100,7 +100,7 @@ EOS
 
     xapian_query = build_xapian_query query
     while true
-      cur_limit = limit ? [(offset+page),limit].min : (offset+page)
+      cur_limit = limit ? [page,limit-offset].min : page
       rs = run_query_summaries xapian_query, offset, cur_limit
       if block_given?
         rs.each { |r| yield r }
@@ -230,7 +230,7 @@ EOS
 
   def run_query xapian_query, offset, limit, checkatleast=0
     @enquire.query = xapian_query
-    @enquire.mset(offset, limit-offset, checkatleast)
+    @enquire.mset(offset, limit, checkatleast)
   end
 
   def run_query_summaries xapian_query, offset, limit
