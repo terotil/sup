@@ -140,6 +140,7 @@ class Message
   end
 
   def is_list_message?; !@list_address.nil?; end
+  def is_draft?; has_label? 'draft'; end
 
   def has_label? t; @labels.member? t; end
 
