@@ -21,6 +21,22 @@ class Connection
     end
   end
 
+  def fix_encoding x
+    case x
+    when String
+      x = x.dup
+      x.force_encoding Encoding::UTF_8
+      x.check
+      x
+    when Hash
+      Hash[x.map { |k,v| [fix_encoding(k), fix_encoding(v)] }]
+    when Array
+      x.map { |v| fix_encoding(v) }
+    else
+      x
+    end
+  end
+
   def read
     while @parsed.empty?
       chunk = @io.readpartial 1024
@@ -29,7 +45,7 @@ class Connection
     end
     type, args = @parsed.shift
     fail unless type.is_a? String and args.is_a? Hash
-    [type, args]
+    fix_encoding [type, args]
   end
 
   def write *o

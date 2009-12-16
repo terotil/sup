@@ -122,6 +122,7 @@ end
 class AddHandler < RequestHandler
   def run
     raw = args[:raw]
+    raw.force_encoding Encoding::ASCII_8BIT
     labels = args[:labels] || []
     addr = put_raw raw
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
