@@ -93,24 +93,11 @@ EOS
     matchset.matches_estimated
   end
 
-  EACH_SUMMARY_PAGE = 100
   def each_summary query, offset, limit
-    ret = block_given? ? nil : []
-    page = EACH_SUMMARY_PAGE
-
     xapian_query = build_xapian_query query
-    while true
-      cur_limit = limit ? [page,limit-offset].min : page
-      rs = run_query_summaries xapian_query, offset, cur_limit
-      if block_given?
-        rs.each { |r| yield r }
-      else
-        ret.concat rs
-      end
-      break if rs.size < page
-      offset += page
-    end
-    ret
+    rs = run_query_summaries xapian_query, offset, limit
+    rs.each { |r| yield r }
+    true
   end
 
   def each_message_in_thread_for m, opts={}
