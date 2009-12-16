@@ -41,7 +41,7 @@ class Redwood::Web
 
   def query c, req, resp
     s = req[:s]
-    summaries = c.query(s, 0, 100, false).map { |x| x[:message] }
+    summaries = c.query(s, 0, 100, false).map { |x| x['summary'] }
     resp.write(render :query, summaries: summaries)
   end
 
@@ -50,7 +50,7 @@ class Redwood::Web
     s = "msgid:#{msgid}"
     result = c.query(s, 0, 1, true).first
     fail "nil result" unless result
-    m = Redwood::Message.parse result[:raw], :labels => result[:message][:labels]
+    m = Redwood::Message.parse result['raw'], :labels => result['summary']['labels']
     resp.write(render :view, message: m)
   end
 end

@@ -324,7 +324,7 @@ class ThreadSet
   end
 
   def make_summary result
-    e = lambda { |k| result['message'][k.to_s] }
+    e = lambda { |k| result['summary'][k.to_s] }
     mk_person = lambda { |x| Redwood::Person.new(*x.reverse!) }
     date = Time.parse e[:date]
 

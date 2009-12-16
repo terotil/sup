@@ -62,7 +62,7 @@ class QueryHandler < RequestHandler
     main_msgloop do |f|
       f.when(T[:query_result]) do |_,summary|
         raw = args[:raw] ? get_raw(summary[:source_info]) : nil
-        reply_message :tag => args[:tag], :message => summary, :raw => raw
+        reply_message :tag => args[:tag], :summary => summary, :raw => raw
       end
       f.die? :query_finished
     end
@@ -121,7 +121,7 @@ class StreamHandler < RequestHandler
       f.when(T[:new_message]) do |_,addr|
         next unless summary = get_relevant_summary(addr)
         raw = args[:raw] ? get_raw(addr) : nil
-        reply_message :tag => args[:tag], :message => summary, :raw => raw
+        reply_message :tag => args[:tag], :summary => summary, :raw => raw
       end
       f.die? T[:cancel, args[:tag]]
     end

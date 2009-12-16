@@ -103,7 +103,7 @@ Represents a query result. If `raw` is present it is the raw message
 text that was previously a parameter to the Add request.
 
 #### Parameters
-*   `message`: Message
+*   `summary`: Summary
 *   `raw`: optional string
 
 
@@ -136,7 +136,7 @@ Query can be any of the following:
 *   `[:term, field, value]`
 
 
-### Message
+### Summary
 *   `message_id`: string
 *   `date`: time
 *   `from`: Person

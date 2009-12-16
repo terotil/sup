@@ -78,8 +78,8 @@ end
 case cmd
 when "query"
   c.query get_query, cmd_opts[:offset], cmd_opts[:limit], cmd_opts[:raw] do |result|
-    puts YAML.dump(result[:message])
-    puts YAML.dump(result[:raw]) if cmd_opts[:raw]
+    puts YAML.dump(result['summary'])
+    puts YAML.dump(result['raw']) if cmd_opts[:raw]
   end
 when "count"
   puts c.count(get_query)
@@ -110,8 +110,8 @@ when "add"
   end
 when "stream"
   stream get_query, cmd_opts[:raw] do |result|
-    puts YAML.dump(x[:message])
-    puts YAML.dump(x[:raw]) if cmd_opts[:raw]
+    puts YAML.dump(x['summary'])
+    puts YAML.dump(x['raw']) if cmd_opts[:raw]
   end
 else
   fail "#{cmd} command unimplemented"

@@ -83,16 +83,16 @@ class TestServer < Test::Unit::TestCase
     with_wire do |w|
       add_messages w
       w.send :query, :query => q('QueryOrderingTestTerm')
-      msgs = []
+      summaries = []
       while (x = w.read)
         type, args, = x
         break if type == 'done'
         expect x, :message
-        msgs << args['message']
+        summaries << args['summary']
       end
 
-      assert_operator msgs.size, :>, 1
-      dates = msgs.map { |m| m['date'] }
+      assert_operator summaries.size, :>, 1
+      dates = summaries.map { |m| m['date'] }
       dates.inject { |b,v| assert_operator b, :>=, v; v }
     end
   end
