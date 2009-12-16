@@ -27,7 +27,7 @@ module Redwood::Client
     $config = Redwood::Client::Config.load CONFIG_FN
     $contacts = Redwood::Client::ContactManager.new CONTACT_FN
     $labels = Redwood::Client::LabelManager.new LABELS_FN
-    $account = Redwood::Client::AccountManager.new $config[:accounts]
+    $accounts = Redwood::Client::AccountManager.new $config[:accounts]
     $crypto = Redwood::CryptoManager.new
     $undo = Redwood::Client::UndoManager.new
   end

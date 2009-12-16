@@ -61,6 +61,7 @@ class LabelManager
   end
 
   def << t
+    t = t.to_sym if t.respond_to? :to_sym
     raise ArgumentError, "expecting a symbol" unless t.is_a? Symbol
     unless @labels.member?(t) || RESERVED_LABELS.member?(t)
       @labels[t] = true

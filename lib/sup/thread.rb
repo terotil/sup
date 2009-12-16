@@ -323,6 +323,20 @@ class ThreadSet
     @threads.delete_if { |key, thread| t == thread }
   end
 
+  def make_summary result
+    e = lambda { |k| result['message'][k.to_s] }
+    mk_person = lambda { |x| Redwood::Person.new(*x.reverse!) }
+    date = Time.parse e[:date]
+
+    Redwood::MessageSummary.new :id => e[:message_id], :from => mk_person[e[:from]],
+                       :date => date, :subj => e[:subject],
+                       :to => e[:to].map(&mk_person), :cc => e[:cc].map(&mk_person),
+                       :bcc => e[:bcc].map(&mk_person),
+                       :refs => e[:refs], :replytos => e[:replytos],
+                       :labels => e[:labels], :source_info => 'none',
+                       :snippet => (e[:snippet]||'')
+  end
+
   ## load in (at most) num number of threads from the index
   def load_n_threads num, opts={}
     info opts.inspect
@@ -330,6 +344,8 @@ class ThreadSet
     info $connection.count(q)
     $connection.query(q, 0, 100, false) do |result|
       info result.inspect
+      m = make_summary result
+      add_message m
     end
 =begin
     @index.each_id_by_date opts do |mid, builder|

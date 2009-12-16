@@ -435,13 +435,21 @@ private
 end
 
 class MessageSummary
-  FIELDS = [:id, :date, :from, :subj, :refs, :replytos, :to, :cc, :bcc, :labels, :source_info]
+  FIELDS = [:id, :date, :from, :subj, :refs, :replytos, :to, :cc, :bcc, :labels, :source_info, :snippet]
   attr_reader *FIELDS
 
   def initialize h
     FIELDS.each do |k|
       instance_variable_set(:"@#{k}", h[k] || fail("missing field #{k}"))
     end
+  end
+
+  def has_label? l
+    labels.member? l.to_s
+  end
+
+  def dirty?
+    false
   end
 end
 
