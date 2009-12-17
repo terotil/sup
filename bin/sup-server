@@ -61,10 +61,11 @@ rescue Exception => e
   File.open("sup-exception-log.txt", "w") { |f| f.puts e.message; f.puts e.backtrace }
   raise
 ensure
+  index << T[:flush,Actor.current] if index
   listeners.each { |q| q << :die } if listeners
   dispatcher << :die if dispatcher
-  index << :die if index
   store << :die if store
+  Actor.receive { |f| f.when(:flushed) { index << :die } } if index
   Actor.sleep 1 # let other actors clean up
   lock.unlock
   info "finished"

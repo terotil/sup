@@ -41,6 +41,10 @@ EOS
     @enquire.docid_order = Xapian::Enquire::ASCENDING
   end
 
+  def flush
+    @xapian.flush
+  end
+
   def contains_id? id
     find_docid(id) && true
   end

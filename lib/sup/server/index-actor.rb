@@ -19,6 +19,11 @@ class IndexActor < Actorized
         index.add_message m
         a << :added
       end
+
+      f.when(T[:flush]) do |_,a|
+        index.flush
+        a << :flushed
+      end
     end
   end
 end
