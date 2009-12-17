@@ -8,11 +8,16 @@ class Actorized
     #h.each { |k,v| self[k] = v }
     @die = false
     begin
+      debug "#{to_s} spawned"
       run *a
     ensure
       self.send :ensure
-      debug "#{Actor.current} dying"
+      debug "#{to_s} dying"
     end
+  end
+
+  def to_s
+    self.class.name
   end
 
   def kill

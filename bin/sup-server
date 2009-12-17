@@ -36,6 +36,7 @@ begin
   dispatcher = Redwood::Server::Dispatcher.spawn_link index, store
   listeners = uris.map { |uri| Redwood::Protocol.listen uri, dispatcher }
 
+  Actor.sleep 0.1
   info "ready"
   main = Actor.current
   trap('INT') { main << :die }
