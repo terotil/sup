@@ -18,7 +18,7 @@ module Redwood
 module Protocol
   class JSONFilter
     def initialize
-      @parser = Yajl::Parser.new
+      @parser = Yajl::Parser.new :check_utf8 => false
     end
 
     def decode data
