@@ -8,7 +8,7 @@ class Dispatcher < Actorized
     self[:store] = store
     @subscribers = []
     main_msgloop do |f|
-      f.when(T[:client]) { |_,wire| ClientConnection.spawn me, wire }
+      f.when(T[:client]) { |_,wire| ClientConnection.spawn_link me, wire }
       f.when(T[:subscribe]) { |_,q| @subscribers << q }
       f.when(T[:unsubscribe]) { |_,q| @subscribers.delete q }
       f.when(T[:publish]) { |_,m| @subscribers.each { |q| q << m } }
@@ -39,15 +39,15 @@ class ClientConnection < Actorized
           #reply_error :tag => args[:tag], :type => :uknown_request, :message => "Unknown request"
           nil
         end
-        klass.spawn me, args unless klass.nil?
+        klass.spawn_link me, args unless klass.nil?
       end
 
       f.when(T[:reply]) do |_,type,args|
         wire.write [[type,args]]
       end
 
-      f.ignore T[:unix_closed]
-      f.ignore T[:tcp_closed]
+      f.die? T[:unix_closed]
+      f.die? T[:tcp_closed]
     end
   end
 end
