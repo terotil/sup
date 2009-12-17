@@ -351,13 +351,12 @@ class ThreadSet
     offset = 0
     while size < num
       found = 0
-      $connection.query(q, offset, PAGE_SIZE, opts[:raw]) do |result|
+      results = $connection.query(q, offset, PAGE_SIZE, false)
+      results.each do |result|
         next if size >= num unless num == -1
         found += 1
-        fail result.inspect if opts[:raw] and not result['raw']
-        m = result['raw'] ? make_message(result) : make_summary(result)
-        next if contains_id? m.id
-        load_thread_for_message m, :skip_killed => opts[:skip_killed], :load_deleted => opts[:load_deleted], :load_spam => opts[:load_spam]
+        next if contains_id? result['summary']['message_id']
+        load_threads result['summary']['threads'], :skip_killed => opts[:skip_killed], :load_deleted => opts[:load_deleted], :load_spam => opts[:load_spam], :raw => opts[:raw]
         yield size if block_given?
       end
       break unless found > 0
@@ -365,10 +364,15 @@ class ThreadSet
     end
   end
 
-  ## loads in all messages needed to thread m
-  ## may do nothing if m's thread is killed
-  def load_thread_for_message m, opts={}
-    add_message m
+  def load_threads ts, opts={}
+    t = ts.first or fail
+    debug "loading threads for #{ts}"
+    q = [:or, *ts.map { |t| [:term, :thread, t] }]
+    results = $connection.query(q, 0, nil, opts[:raw])
+    results.each do |result|
+      m = result['raw'] ? make_message(result) : make_summary(result)
+      add_message m
+    end
   end
 
   ## merges in a pre-loaded thread

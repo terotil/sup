@@ -229,6 +229,7 @@ EOS
   def build_summary doc
     e = Marshal.load doc.data
     return unless e
+    e['threads'] = doc.value(THREAD_VALUENO).split(',')
     e ## TODO filter out any internal data
   end
 
