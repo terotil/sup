@@ -24,6 +24,9 @@ class UpdateManager
     meth = "handle_#{type}_update".intern
     @targets.keys.each { |o| o.send meth, sender, *args unless o == sender if o.respond_to? meth }
   end
+
+  def self.relay *o
+  end
 end
 
 end

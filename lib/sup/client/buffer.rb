@@ -515,7 +515,7 @@ EOS
 
     # here I would prefer to give more control and allow all_labels instead of
     # user_defined_labels only
-    applyable_labels = (LabelManager.user_defined_labels - forbidden_labels).map { |l| LabelManager.string_for l }.sort_by { |s| s.downcase }
+    applyable_labels = ($labels.user_defined_labels - forbidden_labels).map { |l| $labels.string_for l }.sort_by { |s| s.downcase }
 
     answer = ask_many_with_completions domain, question, applyable_labels, default
 

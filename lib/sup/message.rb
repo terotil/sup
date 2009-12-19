@@ -445,12 +445,28 @@ class MessageSummary
     end
   end
 
+  def labels
+    Set.new(@labels.to_a.map { |x| x.to_sym })
+  end
+
   def has_label? l
-    labels.member? l.to_s
+    labels.member? l
   end
 
   def dirty?
     false
+  end
+
+  def add_label l
+    $connection.label [:term, :msgid, id], [], [l.to_s]
+  end
+
+  def remove_label l
+    $connection.label [:term, :msgid, id], [l.to_s], []
+  end
+
+  def labels= ls
+    $connection.label [:term, :msgid, id], @labels, (ls.map { |l| l.to_s })
   end
 end
 

@@ -273,7 +273,7 @@ EOS
     $undo.register "toggling #{threads.size.pluralize 'thread'} starred status",
       threads.map { |t| actually_toggle_starred t }
     regen_text
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
   end
 
   ## returns an undo lambda
@@ -351,14 +351,14 @@ EOS
     undo = actually_toggle_archived t
     $undo.register "deleting/undeleting thread #{t.first.id}", undo, lambda { update_text_for_line curpos }
     update_text_for_line curpos
-    Index.save_thread t
+    #Index.save_thread t
   end
 
   def multi_toggle_archived threads
     undos = threads.map { |t| actually_toggle_archived t }
     $undo.register "deleting/undeleting #{threads.size.pluralize 'thread'}", undos, lambda { regen_text }
     regen_text
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
   end
 
   def toggle_new
@@ -366,13 +366,13 @@ EOS
     t.toggle_label :unread
     update_text_for_line curpos
     cursor_down
-    Index.save_thread t
+    #Index.save_thread t
   end
 
   def multi_toggle_new threads
     threads.each { |t| t.toggle_label :unread }
     regen_text
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
   end
 
   def multi_toggle_tagged threads
@@ -388,7 +388,7 @@ EOS
 
   def multi_join_threads threads
     @ts.join_threads threads or return
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
     @tags.drop_all_tags # otherwise we have tag pointers to invalid threads!
     update
   end
@@ -425,7 +425,7 @@ EOS
     $undo.register "marking/unmarking  #{threads.size.pluralize 'thread'} as spam",
                          undos, lambda { regen_text }
     regen_text
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
   end
 
   def toggle_deleted
@@ -439,7 +439,7 @@ EOS
     $undo.register "deleting/undeleting #{threads.size.pluralize 'thread'}",
                          undos, lambda { regen_text }
     regen_text
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
   end
 
   def kill
@@ -464,7 +464,7 @@ EOS
 
     regen_text
     $buffers.flash "#{threads.size.pluralize 'thread'} killed."
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
   end
 
   def cleanup
@@ -521,7 +521,7 @@ EOS
     return unless user_labels
 
     thread.labels = Set.new(keepl) + user_labels
-    user_labels.each { |l| LabelManager << l }
+    user_labels.each { |l| $labels << l }
     update_text_for_line curpos
 
     $undo.register "labeling thread" do
@@ -531,7 +531,7 @@ EOS
     end
 
     UpdateManager.relay self, :labeled, thread.first
-    Index.save_thread thread
+    #Index.save_thread thread
   end
 
   def multi_edit_labels threads
@@ -553,7 +553,7 @@ EOS
           t.remove_label l
         else
           t.apply_label l
-          LabelManager << l
+          $labels << l
         end
       end
       UpdateManager.relay self, :labeled, t.first
@@ -569,7 +569,7 @@ EOS
       regen_text
     end
     
-    threads.each { |t| Index.save_thread t }
+    #threads.each { |t| Index.save_thread t }
   end
 
   def reply type_arg=nil
