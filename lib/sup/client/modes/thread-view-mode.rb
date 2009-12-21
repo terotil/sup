@@ -69,6 +69,7 @@ EOS
 
     k.add :archive_and_next, "Archive this thread, kill buffer, and view next", 'a'
     k.add :delete_and_next, "Delete this thread, kill buffer, and view next", 'd'
+    k.add :toggle_wrap, "Toggle wrapping of text", 'w'
 
     k.add_multi "(a)rchive/(d)elete/mark as (s)pam/mark as u(N)read:", '.' do |kk|
       kk.add :archive_and_kill, "Archive this thread and kill buffer", 'a'
@@ -130,12 +131,19 @@ EOS
       end
     end
 
+    @wrap = true
+
     @layout[latest].state = :open if @layout[latest].state == :closed
     @layout[earliest].state = :detailed if earliest.has_label?(:unread) || @thread.size == 1
 
     #@thread.remove_label :unread
     #Index.save_thread @thread
+  end
+
+  def toggle_wrap
+    @wrap = !@wrap
     regen_text
+    buffer.mark_dirty if buffer
   end
 
   def draw_line ln, opts={}
@@ -147,6 +155,14 @@ EOS
   end
   def lines; @text.length; end
   def [] i; @text[i]; end
+
+  ## a little hacky---since regen_text can depend on buffer features like the
+  ## content_width, we don't call it in the constructor, and instead call it
+  ## here, which is set before we're responsible for drawing ourself.
+  def buffer= b
+    super
+    regen_text
+  end
 
   def show_header
     m = @message_lines[curpos] or return
@@ -332,8 +348,10 @@ EOS
     chunk = @chunk_lines[curpos] or return
     case chunk
     when Chunk::Attachment
-      default_dir = File.join(($config[:default_attachment_save_dir] || "."), chunk.filename)
-      fn = $buffers.ask_for_filename :filename, "Save attachment to file: ", default_dir
+      default_dir = $config[:default_attachment_save_dir]
+      default_dir = ENV["HOME"] if default_dir.nil? || default_dir.empty?
+      default_fn = File.expand_path File.join(default_dir, chunk.filename)
+      fn = $buffers.ask_for_filename :filename, "Save attachment to file: ", default_fn
       save_to_file(fn) { |f| f.print chunk.raw_content } if fn
     else
       m = @message_lines[curpos]
@@ -770,7 +788,12 @@ private
     else
       raise "Bad chunk: #{chunk.inspect}" unless chunk.respond_to?(:inlineable?) ## debugging
       if chunk.inlineable?
-        chunk.lines.map { |line| [[chunk.color, "#{prefix}#{line}"]] }
+        lines = chunk.lines
+        if @wrap
+          width = buffer.content_width
+          lines = lines.map { |l| l.chomp.wrap width }.flatten
+        end
+        lines.map { |line| [[chunk.color, "#{prefix}#{line}"]] }
       elsif chunk.expandable?
         case state
         when :closed
