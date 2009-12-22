@@ -6,7 +6,6 @@ require 'thread'
 require 'fileutils'
 require 'gettext'
 require 'curses'
-require 'bert'
 require 'sup/util'
 
 module Redwood::Client
