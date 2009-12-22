@@ -95,6 +95,14 @@ class Connection
     end
   end
 
+  def query_full q, offset, limit
+    query(q,offset,limit,true).map do |result|
+      raw = result['raw']
+      raw.force_encoding Encoding::ASCII_8BIT
+      Redwood::Message.parse raw
+    end
+  end
+
   def close
     @io.close unless @io.closed?
   end
