@@ -88,7 +88,7 @@ EOS
     @selector_label_width = 0
 
     @crypto_selector =
-      if CryptoManager.have_crypto?
+      if $crypto.have_crypto?
         HorizontalSelector.new "Crypto:", [:none] + CryptoManager::OUTGOING_MESSAGE_OPERATIONS.keys, ["None"] + CryptoManager::OUTGOING_MESSAGE_OPERATIONS.values
       end
     add_selector @crypto_selector if @crypto_selector
@@ -365,7 +365,7 @@ protected
       from_email = Person.from_address(@header["From"]).email
       to_email = [@header["To"], @header["Cc"], @header["Bcc"]].flatten.compact.map { |p| Person.from_address(p).email }
 
-      m = CryptoManager.send @crypto_selector.val, from_email, to_email, m
+      m = $crypto.send @crypto_selector.val, from_email, to_email, m
     end
 
     ## finally, set the top-level headers
