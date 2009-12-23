@@ -8,8 +8,9 @@ require 'messages'
 require 'tmpdir'
 require 'fileutils'
 require 'uri'
+require 'rbconfig'
 
-RUBY = "ruby"
+RUBY = "#{Config::CONFIG['bindir']}/#{Config::CONFIG['ruby_install_name']}"
 EXEC_PATH="./bin"
 LIB_PATHS=%w(./lib ./libxapian-1.9)
 
