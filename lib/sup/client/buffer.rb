@@ -532,11 +532,10 @@ EOS
   end
 
   def ask_for_contacts domain, question, default_contacts=[]
-    fail
     default = default_contacts.map { |s| s.to_s }.join(" ")
     default += " " unless default.empty?
 
-    recent = Index.load_contacts($accounts.user_emails, :num => 10).map { |c| [c.full_address, c.email] }
+    recent = []
     contacts = $contacts.contacts.map { |c| [$contacts.alias_for(c), c.full_address, c.email] }
 
     completions = (recent + contacts).flatten.uniq
