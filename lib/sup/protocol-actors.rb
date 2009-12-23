@@ -16,12 +16,32 @@ end
 
 module Redwood
 module Protocol
-  class JSONFilter
+  class Filter
     def initialize
-      @parser = Yajl::Parser.new :check_utf8 => false
+      @sent_version = false
+      @received_version = false
+      @buf = ''
     end
 
     def decode data
+      if not @received_version
+        @buf << data
+        if i = @buf.index("\n")
+          @received_version = true
+          l = @buf.slice!(0..i)
+          buf = @buf
+          @buf = nil
+          [l] + normal_decode(buf)
+        else
+          []
+        end
+      else
+        normal_decode data
+      end
+    end
+
+    def normal_decode data
+      @parser ||= Yajl::Parser.new :check_utf8 => false
       os = []
       @parser.on_parse_complete = lambda do |(type,args)|
         fail unless type.is_a? String and args.is_a? Hash
@@ -32,11 +52,22 @@ module Protocol
     end
 
     def encode *os
+      if not @sent_version
+        o = os.shift
+        fail unless o.is_a? String
+        @sent_version = true
+        (o + "\n") + normal_encode(*os)
+      else
+        normal_encode *os
+      end
+    end
+
+    def normal_encode *os
       os.inject('') { |s, o| s << Yajl::Encoder.encode(o) }
     end
   end
 
-  FILTERS = [JSONFilter]
+  FILTERS = [Filter]
 
   class GenericListener < Actorized
     def run server, l, accept

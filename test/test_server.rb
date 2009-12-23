@@ -175,8 +175,14 @@ class TestServer < Test::Unit::TestCase
     n.times do
       wires << Redwood::Protocol.unix(@socket_path)
     end
+    wires.each { |w| negotiate w }
     yield *wires
     wires.each { |w| w.close }
+  end
+
+  def negotiate w
+    fail unless w.read.chomp == 'Redwood 1 json none'
+    w << Redwood::Protocol.version_string
   end
 
   def expect resp, type, args={}

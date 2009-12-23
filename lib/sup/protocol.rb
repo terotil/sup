@@ -6,9 +6,14 @@ require 'yajl'
 module Redwood
 module Protocol
 
+def self.version_string
+  "Redwood 1 json none"
+end
+
 class Connection
   def initialize io
     @io = io
+    negotiate
     @parsed = []
     @parser = Yajl::Parser.new :check_utf8 => false
   end
@@ -34,6 +39,17 @@ class Connection
     else
       x
     end
+  end
+
+  def negotiate
+    l = @io.readline
+    l =~ /^Redwood\s+(\d+)\s+([\w,]+)\s+([\w,]+)$/ or fail "unexpected banner #{l.inspect}"
+    version = $1.to_i
+    encodings = $2.split ','
+    extensions = $3.split ','
+    fail unless version == 1
+    fail unless encodings.member? 'json'
+    @io.puts "Redwood 1 json none"
   end
 
   def read

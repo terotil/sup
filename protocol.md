@@ -1,8 +1,15 @@
 Redwood Protocol
 ================
 
-Messages are transmitted as JSON. Messages may be either a request or a
-response, depending on whether the sender is a client or server.
+The server begins by sending a line of the form `Redwood <ver> <encodings>
+<extensions>`, where `ver` is the major protocol version (1), encodings is a
+comma-separated list of supported message encodings (e.g. `json,bert,marshal`),
+and `extensions` is a comma-separated list of protocol extensions. The server
+must advertise at least one encoding. A zero-length list of extensions is
+represented by `none`. The client replies in the same format, with the
+restrictions that the protocol version must match, `encodings` and `extensions`
+must be subsets of what the server advertised, and there must be exactly 1
+encoding specified.
 
 Requests and responses are represented as `[type, params]`, where `type`
 is a lowercase string corresponding to one of the message types specified

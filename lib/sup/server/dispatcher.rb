@@ -22,6 +22,7 @@ class ClientConnection < Actorized
     self[:wire] = wire
     wire.controller = Actor.current
     wire.active = true
+    negotiate
     main_msgloop do |f|
       f.when(T[Case::Any.new(:tcp, :unix), wire]) do |_,_,m|
         type, args, = m
@@ -48,6 +49,14 @@ class ClientConnection < Actorized
 
       f.die? T[:unix_closed]
       f.die? T[:tcp_closed]
+    end
+  end
+
+  def negotiate
+    self[:wire] << Redwood::Protocol.version_string
+    Actor.receive do |f|
+      f.when(T[Case::Any.new(:tcp, :unix), self[:wire]]) do |_,_,m|
+      end
     end
   end
 end
