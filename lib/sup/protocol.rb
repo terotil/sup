@@ -6,16 +6,38 @@ require 'yajl'
 module Redwood
 module Protocol
 
+VERSION = 1
+ENCODINGS = %w(json)
+
 def self.version_string
-  "Redwood 1 json none"
+  "Redwood #{VERSION} #{ENCODINGS * ','} none"
+end
+
+class JSONFilter
+  def initialize
+    @parser = Yajl::Parser.new :check_utf8 => false
+  end
+
+  def decode chunk
+    parsed = []
+    @parser.on_parse_complete = lambda { |o| parsed << o }
+    @parser << chunk
+    parsed
+  end
+
+  def encode o
+    Yajl::Encoder.encode o
+  end
 end
 
 class Connection
   def initialize io
     @io = io
-    negotiate
     @parsed = []
-    @parser = Yajl::Parser.new :check_utf8 => false
+    @filter = case negotiate
+    when 'json' then JSONFilter.new
+    else fail
+    end
   end
 
   def self.connect uri
@@ -47,16 +69,17 @@ class Connection
     version = $1.to_i
     encodings = $2.split ','
     extensions = $3.split ','
-    fail unless version == 1
-    fail unless encodings.member? 'json'
-    @io.puts "Redwood 1 json none"
+    fail unless version == VERSION
+    encoding = (ENCODINGS & encodings).first
+    fail unless encoding
+    @io.puts "Redwood #{VERSION} #{encoding} none"
+    encoding
   end
 
   def read
     while @parsed.empty?
       chunk = @io.readpartial 1024
-      @parser.on_parse_complete = lambda { |o| @parsed << o }
-      @parser << chunk
+      @parsed += @filter.decode chunk
     end
     type, args = @parsed.shift
     fail unless type.is_a? String and args.is_a? Hash
@@ -64,7 +87,7 @@ class Connection
   end
 
   def write *o
-    Yajl::Encoder.encode(o, @io)
+    @io.write @filter.encode(o)
   end
 
   def query q, offset, limit, raw
