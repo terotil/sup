@@ -25,8 +25,8 @@ class JSONFilter
     parsed
   end
 
-  def encode o
-    Yajl::Encoder.encode o
+  def encode *os
+    os.inject('') { |s, o| s << Yajl::Encoder.encode(o) }
   end
 end
 

@@ -21,6 +21,7 @@ module Protocol
       @sent_version = false
       @received_version = false
       @buf = ''
+      @filter = JSONFilter.new
     end
 
     def decode data
@@ -31,24 +32,13 @@ module Protocol
           l = @buf.slice!(0..i)
           buf = @buf
           @buf = nil
-          [l] + normal_decode(buf)
+          [l] + @filter.decode(buf)
         else
           []
         end
       else
-        normal_decode data
+        @filter.decode data
       end
-    end
-
-    def normal_decode data
-      @parser ||= Yajl::Parser.new :check_utf8 => false
-      os = []
-      @parser.on_parse_complete = lambda do |(type,args)|
-        fail unless type.is_a? String and args.is_a? Hash
-        os << [type, args]
-      end
-      @parser << data
-      os
     end
 
     def encode *os
@@ -56,14 +46,10 @@ module Protocol
         o = os.shift
         fail unless o.is_a? String
         @sent_version = true
-        (o + "\n") + normal_encode(*os)
+        (o + "\n") + @filter.encode(*os)
       else
-        normal_encode *os
+        @filter.encode *os
       end
-    end
-
-    def normal_encode *os
-      os.inject('') { |s, o| s << Yajl::Encoder.encode(o) }
     end
   end
 
