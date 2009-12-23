@@ -45,6 +45,7 @@ class Message
   bool_reader :dirty, :source_marked_read, :snippet_contains_encrypted_content
 
   def self.parse str, opts={}
+    opts[:raw] ||= str
     new RMail::Parser.read(str), opts
   end
 
@@ -63,6 +64,7 @@ class Message
     @snippet_contains_encrypted_content = false
     @source_info = opts[:source_info]
     @source_marked_read = false
+    @raw = opts[:raw]
 
     parse_header rmail.header
     @chunks = message_to_chunks rmail
@@ -184,6 +186,19 @@ class Message
       (@bcc.empty? ? [] : ["Bcc: " + @bcc.map { |p| p.full_address }.join(", ")]) +
       ["Date: #{@date.rfc822}",
        "Subject: #{@subj}"]
+  end
+
+  def raw_message
+    @raw
+  end
+
+  def raw_header
+    f = StringIO.new @raw
+    ret = ''
+    until f.eof? || (l = f.gets) =~ /^\r*$/
+      ret << l
+    end
+    ret
   end
 
 private
