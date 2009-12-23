@@ -28,8 +28,6 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def teardown
-    @listener << :die if @listener
-    @store.close if @store
     FileUtils.rm_r @path if passed?
     puts "not cleaning up #{@path}" unless passed?
   end
@@ -82,7 +80,7 @@ class TestIntegration < Test::Unit::TestCase
   end
 
   def wait_for_server
-    sleep 1
+    sleep 2
   end
 
   def with_cmd *args, &b
