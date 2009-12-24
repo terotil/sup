@@ -93,10 +93,7 @@ class Connection
   def initialize io
     @io = io
     @parsed = []
-    @filter = case negotiate
-    when 'json' then JSONFilter.new
-    else fail
-    end
+    @filter = Filter.new
   end
 
   def self.connect uri
@@ -120,19 +117,6 @@ class Connection
     else
       x
     end
-  end
-
-  def negotiate
-    l = @io.readline
-    l =~ /^Redwood\s+(\d+)\s+([\w,]+)\s+([\w,]+)$/ or fail "unexpected banner #{l.inspect}"
-    version = $1.to_i
-    encodings = $2.split ','
-    extensions = $3.split ','
-    fail unless version == VERSION
-    encoding = (ENCODINGS & encodings).first
-    fail unless encoding
-    @io.puts "Redwood #{VERSION} #{encoding} none"
-    encoding
   end
 
   def read
