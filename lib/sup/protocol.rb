@@ -30,6 +30,57 @@ class JSONFilter
   end
 end
 
+class Filter
+  def initialize
+    @sent_version = false
+    @received_version = false
+    @buf = ''
+    @filter = JSONFilter.new
+  end
+
+  def decode data
+    if not @received_version
+      @buf << data
+      if i = @buf.index("\n")
+        @received_version = true
+        l = @buf.slice!(0..i)
+        buf = @buf
+        @buf = nil
+        receive_version l
+        @filter.decode(buf)
+      else
+        []
+      end
+    else
+      @filter.decode data
+    end
+  end
+
+  def encode *os
+    if not @sent_version
+      @sent_version = true
+      l = send_version
+      (l + "\n") + @filter.encode(*os)
+    else
+      @filter.encode *os
+    end
+  end
+
+  def receive_version l
+    l =~ /^Redwood\s+(\d+)\s+([\w,]+)\s+([\w,]+)$/ or fail "unexpected banner #{l.inspect}"
+    version = $1.to_i
+    encodings = $2.split ','
+    extensions = $3.split ','
+    fail unless version == Redwood::Protocol::VERSION
+    encoding = (Redwood::Protocol::ENCODINGS & encodings).first
+    fail unless encoding
+  end
+
+  def send_version
+    Redwood::Protocol.version_string
+  end
+end
+
 class Connection
   def initialize io
     @io = io

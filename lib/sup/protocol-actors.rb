@@ -16,59 +16,6 @@ end
 
 module Redwood
 module Protocol
-  class Filter
-    def initialize
-      @sent_version = false
-      @received_version = false
-      @buf = ''
-      @filter = JSONFilter.new
-    end
-
-    def decode data
-      if not @received_version
-        @buf << data
-        if i = @buf.index("\n")
-          @received_version = true
-          l = @buf.slice!(0..i)
-          buf = @buf
-          @buf = nil
-          receive_version l
-          @filter.decode(buf)
-        else
-          []
-        end
-      else
-        @filter.decode data
-      end
-    end
-
-    def encode *os
-      if not @sent_version
-        @sent_version = true
-        l = send_version
-        (l + "\n") + @filter.encode(*os)
-      else
-        @filter.encode *os
-      end
-    end
-
-    def receive_version l
-      l =~ /^Redwood\s+(\d+)\s+([\w,]+)\s+([\w,]+)$/ or fail "unexpected banner #{l.inspect}"
-      version = $1.to_i
-      encodings = $2.split ','
-      extensions = $3.split ','
-      fail unless version == Redwood::Protocol::VERSION
-      encoding = (Redwood::Protocol::ENCODINGS & encodings).first
-      fail unless encoding
-    end
-
-    def send_version
-      Redwood::Protocol.version_string
-    end
-  end
-
-  FILTERS = [Filter]
-
   class GenericListener < Actorized
     def run server, l, accept
       l.controller = l.instance_eval { @receiver = Actor.current }
@@ -88,7 +35,7 @@ module Protocol
     end
 
     def self.listener host, port
-      Revactor::TCP.listen host, port, :filter => FILTERS
+      Revactor::TCP.listen host, port, :filter => Filter
     end
 
     def self.listen server, host, port
@@ -97,7 +44,7 @@ module Protocol
   end
 
   def self.tcp host, port
-    Revactor::TCP.connect host, port, :filter => FILTERS
+    Revactor::TCP.connect host, port, :filter => Filter
   end
 
   class UnixListener < GenericListener
@@ -111,7 +58,7 @@ module Protocol
     end
 
     def self.listener path
-      Revactor::UNIX.listen path, :filter => FILTERS
+      Revactor::UNIX.listen path, :filter => Filter
     end
 
     def self.listen server, path
@@ -120,7 +67,7 @@ module Protocol
   end
 
   def self.unix path
-    Revactor::UNIX.connect path, :filter => FILTERS
+    Revactor::UNIX.connect path, :filter => Filter
   end
 
   def self.connect uri
