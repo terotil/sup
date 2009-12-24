@@ -32,7 +32,8 @@ module Protocol
           l = @buf.slice!(0..i)
           buf = @buf
           @buf = nil
-          [l] + @filter.decode(buf)
+          receive_version l
+          @filter.decode(buf)
         else
           []
         end
@@ -43,13 +44,26 @@ module Protocol
 
     def encode *os
       if not @sent_version
-        o = os.shift
-        fail unless o.is_a? String
         @sent_version = true
-        (o + "\n") + @filter.encode(*os)
+        l = send_version
+        (l + "\n") + @filter.encode(*os)
       else
         @filter.encode *os
       end
+    end
+
+    def receive_version l
+      l =~ /^Redwood\s+(\d+)\s+([\w,]+)\s+([\w,]+)$/ or fail "unexpected banner #{l.inspect}"
+      version = $1.to_i
+      encodings = $2.split ','
+      extensions = $3.split ','
+      fail unless version == Redwood::Protocol::VERSION
+      encoding = (Redwood::Protocol::ENCODINGS & encodings).first
+      fail unless encoding
+    end
+
+    def send_version
+      Redwood::Protocol.version_string
     end
   end
 

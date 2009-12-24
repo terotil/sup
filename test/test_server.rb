@@ -175,7 +175,6 @@ class TestServer < Test::Unit::TestCase
     n.times do
       wires << Redwood::Protocol.unix(@socket_path)
     end
-    wires.each { |w| negotiate w }
     yield *wires
     wires.each { |w| w.close }
   end
