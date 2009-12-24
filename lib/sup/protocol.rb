@@ -74,6 +74,14 @@ class Filter
     fail unless version == Redwood::Protocol::VERSION
     encoding = (Redwood::Protocol::ENCODINGS & encodings).first
     fail unless encoding
+    create_filter encoding
+  end
+
+  def create_filter encoding
+    @filter = case encoding
+    when 'json' then JSONFilter.new
+    else fail "unknown encoding #{encoding.inspect}"
+    end
   end
 
   def send_version
