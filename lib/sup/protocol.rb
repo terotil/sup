@@ -19,6 +19,7 @@ def self.parse_version l
   version = $1.to_i
   encodings = $2.split ','
   extensions = $3.split ','
+  extensions = [] if extensions == ['none']
   fail unless version == Redwood::Protocol::VERSION
   fail if encodings.empty?
   [encodings, extensions]
