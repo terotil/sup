@@ -12,7 +12,6 @@ class RequestHandler < Actorized
 
   def index; dispatcher[:index]; end
   def store; dispatcher[:store]; end
-  def server; dispatcher; end
 
   def reply_done args
     respond client, 'done', args
@@ -116,13 +115,13 @@ class AddHandler < RequestHandler
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
     index_message m
     reply_done 'tag' => args['tag']
-    server << T[:publish, T[:new_message, addr]]
+    dispatcher << T[:publish, T[:new_message, addr]]
   end
 end
 
 class StreamHandler < RequestHandler
   def run
-    server << T[:subscribe, me]
+    dispatcher << T[:subscribe, me]
     msgloop do |f|
       f.when(T[:new_message]) do |_,addr|
         next unless summary = get_relevant_summary(addr)
@@ -146,13 +145,13 @@ class StreamHandler < RequestHandler
   end
 
   def ensure
-    server << T[:unsubscribe, me]
+    dispatcher << T[:unsubscribe, me]
   end
 end
 
 class CancelHandler < RequestHandler
   def run
-    server << T[:publish, T[:cancel, args['tag']]]
+    dispatcher << T[:publish, T[:cancel, args['tag']]]
   end
 end
 
