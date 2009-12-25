@@ -15,19 +15,19 @@ class RequestHandler < Actorized
   def server; dispatcher; end
 
   def reply_done args
-    respond client, :done, args
+    respond client, 'done', args
   end
 
   def reply_message args
-    respond client, :message, args
+    respond client, 'message', args
   end
 
   def reply_count args
-    respond client, :count, args
+    respond client, 'count', args
   end
 
   def reply_error args
-    respond client, :error, args
+    respond client, 'error', args
   end
 
   def respond client, type, args={}
@@ -49,6 +49,12 @@ class RequestHandler < Actorized
     index << T[:add, me, m]
     expect :added
   end
+
+  def sanitize_summary x
+    ret = {}
+    x.each { |k,v| ret[k.to_s] = v }
+    ret
+  end
 end
 
 class QueryHandler < RequestHandler
@@ -62,7 +68,7 @@ class QueryHandler < RequestHandler
     main_msgloop do |f|
       f.when(T[:query_result]) do |_,summary|
         raw = args[:raw] ? get_raw(summary[:source_info]) : nil
-        reply_message :tag => args[:tag], :summary => summary, :raw => raw
+        reply_message 'tag' => args[:tag], 'summary' => sanitize_summary(summary), 'raw' => raw
       end
       f.die? :query_finished
     end
@@ -75,7 +81,7 @@ class CountHandler < RequestHandler
     q = args[:query]
     index << T[:count, me, q]
     count = expect T[:counted], &_2
-    reply_count :tag => args[:tag], :count => count
+    reply_count 'tag' => args[:tag], 'count' => count
   end
 end
 
@@ -96,7 +102,7 @@ class LabelHandler < RequestHandler
       f.die? :query_finished
     end
 
-    reply_done :tag => args[:tag]
+    reply_done 'tag' => args[:tag]
   end
 
 end
@@ -109,7 +115,7 @@ class AddHandler < RequestHandler
     addr = put_raw raw
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
     index_message m
-    reply_done :tag => args[:tag]
+    reply_done 'tag' => args[:tag]
     server << T[:publish, T[:new_message, addr]]
   end
 end
@@ -121,7 +127,7 @@ class StreamHandler < RequestHandler
       f.when(T[:new_message]) do |_,addr|
         next unless summary = get_relevant_summary(addr)
         raw = args[:raw] ? get_raw(addr) : nil
-        reply_message :tag => args[:tag], :summary => summary, :raw => raw
+        reply_message 'tag' => args[:tag], 'summary' => sanitize_summary(summary), 'raw' => raw
       end
       f.die? T[:cancel, args[:tag]]
     end
@@ -133,7 +139,7 @@ class StreamHandler < RequestHandler
     index << T[:query, me, q, 0, 1]
     summary = nil
     msgloop do |f|
-      f.when(T[:query_result]) { |_,x| summary = x }
+      f.when(T[:query_result]) { |_,x| summary = sanitize_summary(x) }
       f.die? :query_finished
     end
     summary

@@ -143,7 +143,7 @@ class Connection
   def query q, offset, limit, raw
     Redwood::QueryParser.validate q
     results = []
-    write :query, :query => q, :offset => offset, :limit => limit, :raw => raw
+    write 'query', 'query' => q, 'offset' => offset, 'limit' => limit, 'raw' => raw
     while ((x = read) && x[0] != 'done')
       fail "expected message, got #{x[0].inspect}" unless x[0] == 'message'
       if block_given?
@@ -157,27 +157,27 @@ class Connection
 
   def count q
     Redwood::QueryParser.validate q
-    write :count, :query => q
+    write 'count', 'query' => q
     x = read
     x[1]['count']
   end
 
   def add raw, labels
-    write :add, :raw => raw, :labels => labels
+    write 'add', 'raw' => raw, 'labels' => labels
     read
   end
 
   def label q, remove, add
     Redwood::QueryParser.validate q
-    write :label, :query => q, :remove => remove, :add => add
+    write 'label', 'query' => q, 'remove' => remove, 'add' => add
     read
   end
 
   def stream q, raw
     Redwood::QueryParser.validate q
-    send :stream,
-          :query => q,
-          :raw => raw
+    send 'stream',
+          'query' => q,
+          'raw' => raw
     while (x = read)
       fail "expected message, got #{x[0].inspect}" unless x[0] == 'message'
       yield x[1]

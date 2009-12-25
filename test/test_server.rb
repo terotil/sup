@@ -30,8 +30,8 @@ class TestServer < Test::Unit::TestCase
 
   def add_messages w, msgs=NormalMessages.msgs, labels=[]
     msgs.each do |msg|
-      write w, :add, :raw => msg, :labels => labels
-      expect read(w), :done
+      write w, 'add', 'raw' => msg, 'labels' => labels
+      expect read(w), 'done'
     end
   end
 
@@ -47,47 +47,47 @@ class TestServer < Test::Unit::TestCase
 
   def test_add_with_labels
     with_wire do |w|
-      write w, :count, :query => q('label:foo')
-      expect read(w), :count, :count => 0
+      write w, 'count', 'query' => q('label:foo')
+      expect read(w), 'count', 'count' => 0
 
-      add_messages w, NormalMessages.msgs, [:foo]
+      add_messages w, NormalMessages.msgs, ['foo']
 
-      write w, :count, :query => q('label:foo')
-      expect read(w), :count, :count => NormalMessages.msgs.size
+      write w, 'count', 'query' => q('label:foo')
+      expect read(w), 'count', 'count' => NormalMessages.msgs.size
     end
   end
 
   def test_count
     with_wire do |w|
-      write w, :count, :query => q('CountTestTerm')
-      expect read(w), :count, :count => 0
+      write w, 'count', 'query' => q('CountTestTerm')
+      expect read(w), 'count', 'count' => 0
 
       add_messages w
 
-      write w, :count, :query => q('CountTestTerm')
-      expect read(w), :count, :count => 1
+      write w, 'count', 'query' => q('CountTestTerm')
+      expect read(w), 'count', 'count' => 1
    end
   end
 
   def test_query
     with_wire do |w|
       add_messages w
-      write w, :query, :query => q('QueryTestTerm')
-      expect read(w), :message
-      expect read(w), :message
-      expect read(w), :done
+      write w, 'query', 'query' => q('QueryTestTerm')
+      expect read(w), 'message'
+      expect read(w), 'message'
+      expect read(w), 'done'
     end
   end
 
   def test_query_ordering
     with_wire do |w|
       add_messages w
-      write w, :query, :query => q('QueryOrderingTestTerm')
+      write w, 'query', 'query' => q('QueryOrderingTestTerm')
       summaries = []
       while (x = read(w))
         type, args, = x
         break if type == 'done'
-        expect x, :message
+        expect x, 'message'
         summaries << args['summary']
       end
 
@@ -100,19 +100,19 @@ class TestServer < Test::Unit::TestCase
   def test_label
     with_wire do |w|
       add_messages w
-      write w, :count, :query => q('label:test')
-      expect read(w), :count, :count => 0
-      write w, :label, :query => q('QueryTestTerm'), :add => [:test]
-      expect read(w), :done
-      write w, :count, :query => q('label:test')
-      expect read(w), :count, :count => 2
+      write w, 'count', 'query' => q('label:test')
+      expect read(w), 'count', 'count' => 0
+      write w, 'label', 'query' => q('QueryTestTerm'), 'add' => ['test']
+      expect read(w), 'done'
+      write w, 'count', 'query' => q('label:test')
+      expect read(w), 'count', 'count' => 2
     end
   end
 
   def test_stream
     with_wires(2) do |w1, w2|
       a = []
-      write w1, :stream, :query => q('type:mail')
+      write w1, 'stream', 'query' => q('type:mail')
       add_messages w2
       Actorized.msgloop do |f|
         f.when(T[:msg, w1]) { |_,_,m| a << m }
@@ -126,7 +126,7 @@ class TestServer < Test::Unit::TestCase
     msgs = NormalMessages.msgs
     with_wires(2) do |w1, w2|
       a = []
-      write w1, :stream, :query => q('type:mail'), :tag => 42
+      write w1, 'stream', 'query' => q('type:mail'), 'tag' => 42
 
       add_messages w2, [msgs[0]]
       Actorized.msgloop do |f|
@@ -135,7 +135,7 @@ class TestServer < Test::Unit::TestCase
       end
       assert_equal 1, a.size
 
-      write w2, :cancel, :tag => 42
+      write w2, 'cancel', 'tag' => 42
 
       add_messages w2, [msgs[1]]
       Actorized.msgloop do |f|
@@ -149,8 +149,8 @@ class TestServer < Test::Unit::TestCase
   def test_multiple_accept
     with_wires(2) do |w1,w2|
       add_messages w1
-      write w2, :count, :query => q('type:mail')
-      expect read(w2), :count, :count => NormalMessages.msgs.size
+      write w2, 'count', 'query' => q('type:mail')
+      expect read(w2), 'count', 'count' => NormalMessages.msgs.size
     end
   end
 
