@@ -5,7 +5,7 @@ class RequestHandler < Actorized
 
   def initialize client, args
     @client = client
-    @args = SavingHash.new { |k| args[k.to_s] }
+    @args = args
     @dispatcher = client[:dispatcher]
     super()
   end
@@ -59,37 +59,37 @@ end
 
 class QueryHandler < RequestHandler
   def run
-    q = args[:query]
-    fields = args[:fields]
-    offset = args[:offset] || 0
-    limit = args[:limit]
+    q = args['query']
+    fields = args['fields']
+    offset = args['offset'] || 0
+    limit = args['limit']
 
     index << T[:query, me, q, offset, limit]
     main_msgloop do |f|
       f.when(T[:query_result]) do |_,summary|
-        raw = args[:raw] ? get_raw(summary[:source_info]) : nil
-        reply_message 'tag' => args[:tag], 'summary' => sanitize_summary(summary), 'raw' => raw
+        raw = args['raw'] ? get_raw(summary[:source_info]) : nil
+        reply_message 'tag' => args['tag'], 'summary' => sanitize_summary(summary), 'raw' => raw
       end
       f.die? :query_finished
     end
-    reply_done :tag => args[:tag]
+    reply_done 'tag' => args['tag']
   end
 end
 
 class CountHandler < RequestHandler
   def run
-    q = args[:query]
+    q = args['query']
     index << T[:count, me, q]
     count = expect T[:counted], &_2
-    reply_count 'tag' => args[:tag], 'count' => count
+    reply_count 'tag' => args['tag'], 'count' => count
   end
 end
 
 class LabelHandler < RequestHandler
   def run
-    q = args[:query]
-    add = args[:add] || []
-    remove = args[:remove] || []
+    q = args['query']
+    add = args['add'] || []
+    remove = args['remove'] || []
 
     index << T[:query, me, q, 0, nil]
     main_msgloop do |f|
@@ -102,20 +102,20 @@ class LabelHandler < RequestHandler
       f.die? :query_finished
     end
 
-    reply_done 'tag' => args[:tag]
+    reply_done 'tag' => args['tag']
   end
 
 end
 
 class AddHandler < RequestHandler
   def run
-    raw = args[:raw]
+    raw = args['raw']
     raw.force_encoding Encoding::ASCII_8BIT
-    labels = args[:labels] || []
+    labels = args['labels'] || []
     addr = put_raw raw
     m = Redwood::Message.parse raw, :labels => labels, :source_info => addr
     index_message m
-    reply_done 'tag' => args[:tag]
+    reply_done 'tag' => args['tag']
     server << T[:publish, T[:new_message, addr]]
   end
 end
@@ -126,15 +126,15 @@ class StreamHandler < RequestHandler
     msgloop do |f|
       f.when(T[:new_message]) do |_,addr|
         next unless summary = get_relevant_summary(addr)
-        raw = args[:raw] ? get_raw(addr) : nil
-        reply_message 'tag' => args[:tag], 'summary' => sanitize_summary(summary), 'raw' => raw
+        raw = args['raw'] ? get_raw(addr) : nil
+        reply_message 'tag' => args['tag'], 'summary' => sanitize_summary(summary), 'raw' => raw
       end
-      f.die? T[:cancel, args[:tag]]
+      f.die? T[:cancel, args['tag']]
     end
   end
 
   def get_relevant_summary addr
-    q = args[:query]
+    q = args['query']
     q = ['and', q, ['term', 'source_info', addr]]
     index << T[:query, me, q, 0, 1]
     summary = nil
@@ -152,7 +152,7 @@ end
 
 class CancelHandler < RequestHandler
   def run
-    server << T[:publish, T[:cancel, args[:tag]]]
+    server << T[:publish, T[:cancel, args['tag']]]
   end
 end
 
