@@ -95,16 +95,14 @@ module Protocol
           @filter.decode(data).each { |m| forward m }
         end
 
-        f.when T[Case::Any.new(:tcp_closed, :unix_closed)] do
-          @controller << :die
-          throw :die
-        end
+        f.die? T[Case::Any.new(:tcp_closed, :unix_closed)]
 
         f.when(T[:msg, @controller]) do |_,_,m|
           debug "#{me.inspect} writing message #{m.inspect}"
           @s.write @filter.encode(m)
         end
       end
+      @controller << :die
     end
 
     def negotiate
