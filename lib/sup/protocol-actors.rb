@@ -81,7 +81,7 @@ module Protocol
     def run s, controller
       @s = s
       @controller = controller
-      @filter = JSONFilter.new
+      @filter = nil
       @version_buf = SingleLineBuffer.new
 
       @s.controller = me
@@ -129,24 +129,36 @@ module Protocol
     end
 
     def receive_version l
-      @s.write l
+      encodings, extensions = Redwood::Protocol.parse_version l
+      encoding = Redwood::Protocol.choose_encoding encodings
+      debug "#{me.inspect} chose #{encoding}"
+      @filter = Redwood::Protocol.create_filter encoding
+      @s.write(Redwood::Protocol.version_string([encoding], extensions) + "\n")
     end
   end
 
   class ServerConnectionActor < ConnectionActor
     def negotiate
       debug "#{me.inspect} negotiating"
-      @s.write "#{Redwood::Protocol.version_string}\n"
+      @s.write(Redwood::Protocol.version_string + "\n")
       msgloop do |f|
         f.when(T[Case::Any.new(:tcp, :unix), @s]) do |pr,_,data|
           debug "#{me.inspect} negotiate got chunk #{data.inspect}"
           l, remaining = @version_buf << data
           if l
+            receive_version l
             me << T[pr, @s, remaining] unless remaining.empty?
             throw :die
           end
         end
       end
+    end
+
+    def receive_version l
+      encodings, extensions = Redwood::Protocol.parse_version l
+      fail unless encodings.size == 1
+      debug "#{me.inspect} chose #{encodings.first}"
+      @filter = Redwood::Protocol.create_filter encodings.first
     end
   end
 

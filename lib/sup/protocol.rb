@@ -9,8 +9,30 @@ module Protocol
 VERSION = 1
 ENCODINGS = %w(json)
 
-def self.version_string
-  "Redwood #{VERSION} #{ENCODINGS * ','} none"
+def self.version_string encodings=ENCODINGS, extensions=[]
+  fail if encodings.empty?
+  "Redwood #{VERSION} #{encodings * ','} #{extensions.empty? ? :none : (extensions * ',')}"
+end
+
+def self.parse_version l
+  l =~ /^Redwood\s+(\d+)\s+([\w,]+)\s+([\w,]+)$/ or fail "unexpected banner #{l.inspect}"
+  version = $1.to_i
+  encodings = $2.split ','
+  extensions = $3.split ','
+  fail unless version == Redwood::Protocol::VERSION
+  fail if encodings.empty?
+  [encodings, extensions]
+end
+
+def self.choose_encoding encodings
+  (Redwood::Protocol::ENCODINGS & encodings).first
+end
+
+def self.create_filter encoding
+  case encoding
+  when 'json' then JSONFilter.new
+  else fail "unknown encoding #{encoding.inspect}"
+  end
 end
 
 class JSONFilter
@@ -67,21 +89,8 @@ class Filter
   end
 
   def receive_version l
-    l =~ /^Redwood\s+(\d+)\s+([\w,]+)\s+([\w,]+)$/ or fail "unexpected banner #{l.inspect}"
-    version = $1.to_i
-    encodings = $2.split ','
-    extensions = $3.split ','
-    fail unless version == Redwood::Protocol::VERSION
-    encoding = (Redwood::Protocol::ENCODINGS & encodings).first
-    fail unless encoding
-    create_filter encoding
-  end
-
-  def create_filter encoding
-    @filter = case encoding
-    when 'json' then JSONFilter.new
-    else fail "unknown encoding #{encoding.inspect}"
-    end
+    encodings, extensions = Redwood::Protocol.parse_version(l)
+    Redwood::Protocol.create_filter encodings.first
   end
 
   def send_version
