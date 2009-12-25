@@ -7,7 +7,7 @@ module Redwood
 module Protocol
 
 VERSION = 1
-ENCODINGS = %w(json)
+ENCODINGS = %w(json marshal)
 
 def self.version_string encodings=ENCODINGS, extensions=[]
   fail if encodings.empty?
@@ -31,6 +31,7 @@ end
 def self.create_filter encoding
   case encoding
   when 'json' then JSONFilter.new
+  when 'marshal' then MarshalFilter.new
   else fail "unknown encoding #{encoding.inspect}"
   end
 end
@@ -52,49 +53,37 @@ class JSONFilter
   end
 end
 
-class Filter
+class MarshalFilter
   def initialize
-    @sent_version = false
-    @received_version = false
     @buf = ''
-    @filter = JSONFilter.new
+    @state = :prefix
+    @size = 0
   end
 
-  def decode data
-    if not @received_version
-      @buf << data
-      if i = @buf.index("\n")
-        @received_version = true
-        l = @buf.slice!(0..i)
-        buf = @buf
-        @buf = nil
-        receive_version l
-        @filter.decode(buf)
-      else
-        []
+  def decode chunk
+    received = []
+    @buf << chunk
+
+    begin
+      if @state == :prefix
+        break unless @buf.size >= 4
+        prefix = @buf.slice!(0...4)
+        @size = prefix.unpack('N')[0]
+        @state = :data
       end
-    else
-      @filter.decode data
-    end
+
+      fail unless @state == :data
+      break if @buf.size < @size
+      received << Marshal.load(@buf.slice!(0...@size))
+      @state = :prefix
+    end until @buf.empty?
+
+    received
   end
 
-  def encode *os
-    if not @sent_version
-      @sent_version = true
-      l = send_version
-      (l + "\n") + @filter.encode(*os)
-    else
-      @filter.encode *os
-    end
-  end
-
-  def receive_version l
-    encodings, extensions = Redwood::Protocol.parse_version(l)
-    Redwood::Protocol.create_filter encodings.first
-  end
-
-  def send_version
-    Redwood::Protocol.version_string
+  def encode o
+    data = Marshal.dump o
+    [data.size].pack('N') + data
   end
 end
 
@@ -102,7 +91,8 @@ class Connection
   def initialize io
     @io = io
     @parsed = []
-    @filter = Filter.new
+    @filter = nil
+    negotiate
   end
 
   def self.connect uri
@@ -111,6 +101,14 @@ class Connection
     when 'tcp' then new TCPSocket.new(uri.host, uri.port)
     else fail "unknown URI scheme #{uri.scheme}"
     end
+  end
+
+  def negotiate
+    l = @io.readline
+    encodings, extensions = Redwood::Protocol.parse_version l
+    encoding = Redwood::Protocol.choose_encoding encodings
+    @filter = Redwood::Protocol.create_filter encoding
+    @io.write(Redwood::Protocol.version_string([encoding], extensions) + "\n")
   end
 
   def fix_encoding x
