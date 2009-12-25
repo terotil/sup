@@ -7,7 +7,7 @@ module Redwood
 module Protocol
 
 VERSION = 1
-ENCODINGS = %w(json marshal)
+ENCODINGS = %w(marshal json)
 
 def self.version_string encodings=ENCODINGS, extensions=[]
   fail if encodings.empty?
