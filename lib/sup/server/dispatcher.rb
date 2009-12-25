@@ -34,8 +34,8 @@ class ClientConnection < Actorized
         when 'stream' then StreamHandler
         when 'cancel' then CancelHandler
         else
-          puts "unknown request #{type.inspect}"
-          #reply_error :tag => args[:tag], :type => :uknown_request, :message => "Unknown request"
+          debug "unknown request #{type.inspect}"
+          wire << T[:msg, me, ['error', 'tag' => args['tag'], 'type' => 'unknown_request', 'message' => "Unknown request"]]
           nil
         end
         klass.spawn_link me, args unless klass.nil?

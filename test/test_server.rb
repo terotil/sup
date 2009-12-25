@@ -154,6 +154,13 @@ class TestServer < Test::Unit::TestCase
     end
   end
 
+  def test_unknown_request
+    with_wire do |w|
+      write w, 'foo', 'tag' => 't'
+      expect read(w), 'error', 'tag' => 't', 'type' => 'unknown_request'
+    end
+  end
+
   def with_wire
     with_wires(1) { |w| yield w }
   end
