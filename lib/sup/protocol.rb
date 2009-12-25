@@ -46,11 +46,26 @@ class JSONFilter
     parsed = []
     @parser.on_parse_complete = lambda { |o| parsed << o }
     @parser << chunk
-    parsed
+    parsed.map { |x| fix_encoding x }
   end
 
   def encode *os
     os.inject('') { |s, o| s << Yajl::Encoder.encode(o) }
+  end
+
+  def fix_encoding x
+    case x
+    when String
+      x = x.dup
+      x.force_encoding Encoding::UTF_8
+      x
+    when Hash
+      Hash[x.map { |k,v| [fix_encoding(k), fix_encoding(v)] }]
+    when Array
+      x.map { |v| fix_encoding(v) }
+    else
+      x
+    end
   end
 end
 
@@ -112,21 +127,6 @@ class Connection
     @io.write(Redwood::Protocol.version_string([encoding], extensions) + "\n")
   end
 
-  def fix_encoding x
-    case x
-    when String
-      x = x.dup
-      x.force_encoding Encoding::UTF_8
-      x
-    when Hash
-      Hash[x.map { |k,v| [fix_encoding(k), fix_encoding(v)] }]
-    when Array
-      x.map { |v| fix_encoding(v) }
-    else
-      x
-    end
-  end
-
   def read
     while @parsed.empty?
       chunk = @io.readpartial 1024
@@ -134,7 +134,7 @@ class Connection
     end
     type, args = @parsed.shift
     fail unless type.is_a? String and args.is_a? Hash
-    fix_encoding [type, args]
+    [type, args]
   end
 
   def write *o
