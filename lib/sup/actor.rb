@@ -2,10 +2,12 @@ require 'revactor'
 
 class Actorized
   extend Actorize
+  attr_reader :me
 
   def initialize *a
     #fail unless h.is_a? Hash
     #h.each { |k,v| self[k] = v }
+    @me = Actor.current
     @die = false
     begin
       debug "#{to_s} spawned"
@@ -28,17 +30,16 @@ class Actorized
     me[k]
   end
 
+  def msgloop &b; self.class.msgloop &b; end
+  def main_msgloop &b; self.class.main_msgloop &b; end
+
 private
 
   def []=(k,v)
     me[k] = v
   end
 
-  def me
-    Actor.current
-  end
-
-  def msgloop
+  def self.msgloop
     catch :die do
       loop do
         Actor.receive do |f|
@@ -48,7 +49,7 @@ private
     end
   end
 
-  def main_msgloop
+  def self.main_msgloop
     msgloop do |f|
       yield f
       f.die?
@@ -76,7 +77,7 @@ class Actor::Mailbox::Filter
   end
 
   def unexpected x=Object
-    self.when(x) { raise "unexpected message #{x.inspect}" }
+    self.when(x) { |y| raise "unexpected message #{y.inspect}" }
   end
 
   def die? x=:die

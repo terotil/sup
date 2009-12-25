@@ -17,14 +17,12 @@ class Dispatcher < Actorized
 end
 
 class ClientConnection < Actorized
-  def run dispatcher, wire
+  def run dispatcher, s
+    wire = Redwood::Protocol::ServerConnectionActor.spawn_link(s, Actor.current)
     self[:dispatcher] = dispatcher
     self[:wire] = wire
-    wire.controller = Actor.current
-    wire.active = true
-    wire.write []
     main_msgloop do |f|
-      f.when(T[Case::Any.new(:tcp, :unix), wire]) do |_,_,m|
+      f.when(T[:msg]) do |_,_,m|
         type, args, = m
         debug_msg type, args
         args ||= {}
@@ -44,11 +42,8 @@ class ClientConnection < Actorized
       end
 
       f.when(T[:reply]) do |_,type,args|
-        wire.write [[type,args]]
+        wire << T[:msg, me, [type,args]]
       end
-
-      f.die? T[:unix_closed]
-      f.die? T[:tcp_closed]
     end
   end
 end

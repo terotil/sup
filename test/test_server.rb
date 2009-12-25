@@ -30,8 +30,8 @@ class TestServer < Test::Unit::TestCase
 
   def add_messages w, msgs=NormalMessages.msgs, labels=[]
     msgs.each do |msg|
-      w.send :add, :raw => msg, :labels => labels
-      expect w.read, :done
+      write w, :add, :raw => msg, :labels => labels
+      expect read(w), :done
     end
   end
 
@@ -47,44 +47,44 @@ class TestServer < Test::Unit::TestCase
 
   def test_add_with_labels
     with_wire do |w|
-      w.send :count, :query => q('label:foo')
-      expect w.read, :count, :count => 0
+      write w, :count, :query => q('label:foo')
+      expect read(w), :count, :count => 0
 
       add_messages w, NormalMessages.msgs, [:foo]
 
-      w.send :count, :query => q('label:foo')
-      expect w.read, :count, :count => NormalMessages.msgs.size
+      write w, :count, :query => q('label:foo')
+      expect read(w), :count, :count => NormalMessages.msgs.size
     end
   end
 
   def test_count
     with_wire do |w|
-      w.send :count, :query => q('CountTestTerm')
-      expect w.read, :count, :count => 0
+      write w, :count, :query => q('CountTestTerm')
+      expect read(w), :count, :count => 0
 
       add_messages w
 
-      w.send :count, :query => q('CountTestTerm')
-      expect w.read, :count, :count => 1
+      write w, :count, :query => q('CountTestTerm')
+      expect read(w), :count, :count => 1
    end
   end
 
   def test_query
     with_wire do |w|
       add_messages w
-      w.send :query, :query => q('QueryTestTerm')
-      expect w.read, :message
-      expect w.read, :message
-      expect w.read, :done
+      write w, :query, :query => q('QueryTestTerm')
+      expect read(w), :message
+      expect read(w), :message
+      expect read(w), :done
     end
   end
 
   def test_query_ordering
     with_wire do |w|
       add_messages w
-      w.send :query, :query => q('QueryOrderingTestTerm')
+      write w, :query, :query => q('QueryOrderingTestTerm')
       summaries = []
-      while (x = w.read)
+      while (x = read(w))
         type, args, = x
         break if type == 'done'
         expect x, :message
@@ -100,40 +100,25 @@ class TestServer < Test::Unit::TestCase
   def test_label
     with_wire do |w|
       add_messages w
-      w.send :count, :query => q('label:test')
-      expect w.read, :count, :count => 0
-      w.send :label, :query => q('QueryTestTerm'), :add => [:test]
-      expect w.read, :done
-      w.send :count, :query => q('label:test')
-      expect w.read, :count, :count => 2
-    end
-  end
-
-  class Reader
-    extend Actorize
-
-    def initialize wire, a
-      die = false
-      wire.controller = Actor.current
-      wire.active = true
-      while not die
-        Actor.receive do |f|
-          f.when(T[Case::Any.new(:unix,:tcp)]) { |_,_,m| a << m }
-          f.when(:die) { die = true }
-        end
-      end
+      write w, :count, :query => q('label:test')
+      expect read(w), :count, :count => 0
+      write w, :label, :query => q('QueryTestTerm'), :add => [:test]
+      expect read(w), :done
+      write w, :count, :query => q('label:test')
+      expect read(w), :count, :count => 2
     end
   end
 
   def test_stream
     with_wires(2) do |w1, w2|
       a = []
-      w1.send :stream, :query => q('type:mail')
-      reader = Reader.spawn w1, a
+      write w1, :stream, :query => q('type:mail')
       add_messages w2
-      Actor.sleep 1
+      Actorized.msgloop do |f|
+        f.when(T[:msg, w1]) { |_,_,m| a << m }
+        f.after(1) { throw :die }
+      end
       assert_equal NormalMessages.msgs.size, a.size
-      reader << :die
     end
   end
 
@@ -141,28 +126,31 @@ class TestServer < Test::Unit::TestCase
     msgs = NormalMessages.msgs
     with_wires(2) do |w1, w2|
       a = []
-      w1.send :stream, :query => q('type:mail'), :tag => 42
-      reader = Reader.spawn w1, a
+      write w1, :stream, :query => q('type:mail'), :tag => 42
 
       add_messages w2, [msgs[0]]
-      Actor.sleep 1
+      Actorized.msgloop do |f|
+        f.when(T[:msg, w1]) { |_,_,m| a << m }
+        f.after(1) { throw :die }
+      end
       assert_equal 1, a.size
 
-      w2.send :cancel, :tag => 42
+      write w2, :cancel, :tag => 42
 
       add_messages w2, [msgs[1]]
-      Actor.sleep 1
+      Actorized.msgloop do |f|
+        f.when(T[:msg, w1]) { |_,_,m| a << m }
+        f.after(1) { throw :die }
+      end
       assert_equal 1, a.size
-
-      reader << :die
     end
   end
 
   def test_multiple_accept
     with_wires(2) do |w1,w2|
       add_messages w1
-      w2.send :count, :query => q('type:mail')
-      expect w2.read, :count, :count => NormalMessages.msgs.size
+      write w2, :count, :query => q('type:mail')
+      expect read(w2), :count, :count => NormalMessages.msgs.size
     end
   end
 
@@ -173,15 +161,28 @@ class TestServer < Test::Unit::TestCase
   def with_wires n
     wires = []
     n.times do
-      wires << Redwood::Protocol.unix(@socket_path)
+      s = Redwood::Protocol.unix(@socket_path)
+      wires << Redwood::Protocol::ConnectionActor.spawn_link(s, Actor.current)
     end
     yield *wires
-    wires.each { |w| w.close }
+    wires.each { |w| w << :die }
   end
 
-  def negotiate w
-    fail unless w.read.chomp == 'Redwood 1 json none'
-    w << Redwood::Protocol.version_string
+  def read w
+    debug "reading from #{w.inspect}"
+    ret = nil
+    Actor.receive do |f|
+      f.when(T[:msg, w]) do |_,_,m|
+        ret = m
+      end
+    end
+    debug "finished reading from #{w.inspect}"
+    ret
+  end
+
+  def write w, *m
+    debug "writing to #{w.inspect}"
+    w << T[:msg, Actor.current, m]
   end
 
   def expect resp, type, args={}

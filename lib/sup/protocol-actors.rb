@@ -2,18 +2,6 @@
 require 'sup/actor'
 require 'pp'
 
-class Revactor::TCP::Socket
-  def send *o
-    write [o]
-  end
-end
-
-class Revactor::UNIX::Socket
-  def send *o
-    write [o]
-  end
-end
-
 module Redwood
 module Protocol
   class GenericListener < Actorized
@@ -35,7 +23,7 @@ module Protocol
     end
 
     def self.listener host, port
-      Revactor::TCP.listen host, port, :filter => Filter
+      Revactor::TCP.listen host, port
     end
 
     def self.listen server, host, port
@@ -44,7 +32,7 @@ module Protocol
   end
 
   def self.tcp host, port
-    Revactor::TCP.connect host, port, :filter => Filter
+    Revactor::TCP.connect host, port
   end
 
   class UnixListener < GenericListener
@@ -58,7 +46,7 @@ module Protocol
     end
 
     def self.listener path
-      Revactor::UNIX.listen path, :filter => Filter
+      Revactor::UNIX.listen path
     end
 
     def self.listen server, path
@@ -67,7 +55,99 @@ module Protocol
   end
 
   def self.unix path
-    Revactor::UNIX.connect path, :filter => Filter
+    Revactor::UNIX.connect path
+  end
+
+  class SingleLineBuffer
+    def initialize
+      @buf = ''
+    end
+
+    def << data
+      fail unless @buf
+      @buf << data
+      if i = @buf.index("\n")
+        l = @buf.slice!(0..i)
+        remaining = @buf
+        @buf = nil
+        [l,remaining]
+      else
+        nil
+      end
+    end
+  end
+
+  class ConnectionActor < Actorized
+    def run s, controller
+      @s = s
+      @controller = controller
+      @filter = JSONFilter.new
+      @version_buf = SingleLineBuffer.new
+
+      @s.controller = me
+      @s.active = true
+      negotiate
+      fail unless @filter
+
+      main_msgloop do |f|
+        f.when(T[Case::Any.new(:tcp, :unix), @s]) do |_,_,data|
+          debug "#{me.inspect} read chunk #{data.inspect}"
+          @filter.decode(data).each { |m| forward m }
+        end
+
+        f.when T[Case::Any.new(:tcp_closed, :unix_closed)] do
+          @controller << :die
+          throw :die
+        end
+
+        f.when(T[:msg, @controller]) do |_,_,m|
+          debug "#{me.inspect} writing message #{m.inspect}"
+          @s.write @filter.encode(m)
+        end
+      end
+    end
+
+    def negotiate
+      debug "#{me.inspect} negotiating"
+      msgloop do |f|
+        f.when(T[Case::Any.new(:tcp, :unix), @s]) do |pr,_,data|
+          debug "#{me.inspect} negotiate got chunk #{data.inspect}"
+          l, remaining = @version_buf << data
+          debug "l=#{l.inspect}, remaining=#{remaining.inspect}"
+          if l
+            receive_version l
+            me << T[pr, @s, remaining] unless remaining.empty?
+            throw :die
+          end
+        end
+      end
+    end
+
+    def forward m
+      debug "#{me.inspect} forwarding message #{m.inspect}"
+      @controller << T[:msg, me, m]
+    end
+
+    def receive_version l
+      @s.write l
+    end
+  end
+
+  class ServerConnectionActor < ConnectionActor
+    def negotiate
+      debug "#{me.inspect} negotiating"
+      @s.write "#{Redwood::Protocol.version_string}\n"
+      msgloop do |f|
+        f.when(T[Case::Any.new(:tcp, :unix), @s]) do |pr,_,data|
+          debug "#{me.inspect} negotiate got chunk #{data.inspect}"
+          l, remaining = @version_buf << data
+          if l
+            me << T[pr, @s, remaining] unless remaining.empty?
+            throw :die
+          end
+        end
+      end
+    end
   end
 
   def self.connect uri
