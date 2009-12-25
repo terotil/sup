@@ -20,7 +20,6 @@ class ClientConnection < Actorized
   def run dispatcher, s
     wire = Redwood::Protocol::ServerConnectionActor.spawn_link(s, Actor.current)
     self[:dispatcher] = dispatcher
-    self[:wire] = wire
     main_msgloop do |f|
       f.when(T[:msg]) do |_,_,m|
         type, args, = m
