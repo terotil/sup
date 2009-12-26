@@ -52,6 +52,7 @@ class RequestHandler < Actorized
   def sanitize_summary x
     ret = {}
     x.each { |k,v| ret[k.to_s] = v }
+    ret['date'] = ret['date'].to_s
     ret
   end
 end
