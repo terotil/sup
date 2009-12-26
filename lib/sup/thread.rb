@@ -370,6 +370,7 @@ class ThreadSet
     q = ['or', *ts.map { |t| ['term', 'thread', t] }]
     results = $connection.query(q, 0, nil, opts[:raw])
     results.each do |result|
+      fail if opts[:raw] and not result['raw']
       m = result['raw'] ? make_message(result) : make_summary(result)
       add_message m
     end

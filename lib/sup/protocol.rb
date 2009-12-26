@@ -145,6 +145,7 @@ class Connection
     Redwood::QueryParser.validate q
     results = []
     write 'query', 'query' => q, 'offset' => offset, 'limit' => limit, 'raw' => raw
+    x = nil
     while ((x = read) && x[0] != 'done')
       fail "expected message, got #{x[0].inspect}" unless x[0] == 'message'
       if block_given?
@@ -153,6 +154,7 @@ class Connection
         results << x[1]
       end
     end
+    x = read while (x[0] != 'done')
     block_given? ? nil : results
   end
 
