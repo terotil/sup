@@ -367,7 +367,7 @@ class ThreadSet
   def load_threads ts, opts={}
     t = ts.first or fail
     debug "loading threads for #{ts}"
-    q = [:or, *ts.map { |t| [:term, :thread, t] }]
+    q = ['or', *ts.map { |t| ['term', 'thread', t] }]
     results = $connection.query(q, 0, nil, opts[:raw])
     results.each do |result|
       m = result['raw'] ? make_message(result) : make_summary(result)
