@@ -134,7 +134,7 @@ EOS
     @wrap = true
 
     @layout[latest].state = :open if @layout[latest].state == :closed
-    @layout[earliest].state = :detailed if earliest.has_label?(:unread) || @thread.size == 1
+    @layout[earliest].state = :detailed if earliest.has_label?('unread') || @thread.size == 1
 
     #@thread.remove_label :unread
     #Index.save_thread @thread
@@ -287,12 +287,12 @@ EOS
 
   def toggle_starred
     m = @message_lines[curpos] or return
-    toggle_label m, :starred
+    toggle_label m, 'starred'
   end
 
   def toggle_new
     m = @message_lines[curpos] or return
-    toggle_label m, :unread
+    toggle_label m, 'unread'
   end
 
   def toggle_label m, label
@@ -524,10 +524,10 @@ EOS
 
   def archive_and_then op
     dispatch op do
-      @thread.remove_label :inbox
+      @thread.remove_label 'inbox'
       UpdateManager.relay self, :archived, @thread.first
       $undo.register "archiving 1 thread" do
-        @thread.apply_label :inbox
+        @thread.apply_label 'inbox'
         UpdateManager.relay self, :unarchived, @thread.first
       end
       Index.save_thread @thread
@@ -536,10 +536,10 @@ EOS
 
   def spam_and_then op
     dispatch op do
-      @thread.apply_label :spam
+      @thread.apply_label 'spam'
       UpdateManager.relay self, :spammed, @thread.first
       $undo.register "marking 1 thread as spam" do
-        @thread.remove_label :spam
+        @thread.remove_label 'spam'
         UpdateManager.relay self, :unspammed, @thread.first
       end
       Index.save_thread @thread
@@ -548,10 +548,10 @@ EOS
 
   def delete_and_then op
     dispatch op do
-      @thread.apply_label :deleted
+      @thread.apply_label 'deleted'
       UpdateManager.relay self, :deleted, @thread.first
       $undo.register "deleting 1 thread" do
-        @thread.remove_label :deleted
+        @thread.remove_label 'deleted'
         UpdateManager.relay self, :undeleted, @thread.first
       end
       Index.save_thread @thread
@@ -560,7 +560,7 @@ EOS
 
   def unread_and_then op
     dispatch op do
-      @thread.apply_label :unread
+      @thread.apply_label 'unread'
       UpdateManager.relay self, :unread, @thread.first
       Index.save_thread @thread
     end
@@ -620,7 +620,7 @@ EOS
 private
 
   def initial_state_for m
-    if m.has_label?(:starred) || m.has_label?(:unread)
+    if m.has_label?('starred') || m.has_label?('unread')
       :open
     else
       :closed
@@ -702,13 +702,13 @@ private
     prefix_widget = [color, prefix]
 
     open_widget = [color, (state == :closed ? "+ " : "- ")]
-    new_widget = [color, (m.has_label?(:unread) ? "N" : " ")]
-    starred_widget = if m.has_label?(:starred)
+    new_widget = [color, (m.has_label?('unread') ? "N" : " ")]
+    starred_widget = if m.has_label?('starred')
         [star_color, "*"]
       else
         [color, " "]
       end
-    attach_widget = [color, (m.has_label?(:attachment) ? "@" : " ")]
+    attach_widget = [color, (m.has_label?('attachment') ? "@" : " ")]
 
     case state
     when :open

@@ -20,7 +20,7 @@ module Query
   Q = self
   def from_opts opts
     labels = ([opts[:label]] + (opts[:labels] || [])).compact
-    neglabels = [:spam, :deleted, :killed].reject { |l| (labels.include? l) || opts.member?("load_#{l}".intern) }
+    neglabels = ['spam', 'deleted', 'killed'].reject { |l| (labels.include? l) || opts.member?("load_#{l}".intern) }
     pos_terms, neg_terms = [], []
 
     pos_terms << term(:type, 'mail')

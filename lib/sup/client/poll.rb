@@ -52,7 +52,7 @@ EOS
       $buffers.flash "No new messages." 
     end
 
-    $hooks.run "after-poll", :num => num, :num_inbox => numi, :from_and_subj => from_and_subj, :from_and_subj_inbox => from_and_subj_inbox, :num_inbox_total_unread => lambda { Index.num_results_for :labels => [:inbox, :unread] }
+    $hooks.run "after-poll", :num => num, :num_inbox => numi, :from_and_subj => from_and_subj, :from_and_subj_inbox => from_and_subj_inbox, :num_inbox_total_unread => lambda { fail }
 
   end
 
@@ -114,7 +114,7 @@ EOS
               ## here we merge labels between new and old versions, but we don't let the new
               ## message add :unread or :inbox labels. (they can exist in the old version,
               ## just not be added.)
-              new_labels = old_m.labels + (m.labels - [:unread, :inbox])
+              new_labels = old_m.labels + (m.labels - ['unread', 'inbox'])
               yield "Message at #{m.source_info} is an updated of an old message. Updating labels from #{m.labels.to_a * ','} => #{new_labels.to_a * ','}"
               m.labels = new_labels
               Index.update_message m
@@ -127,7 +127,7 @@ EOS
             loaded_labels.merge m.labels
             num += 1
             from_and_subj << [m.from && m.from.longname, m.subj]
-            if (m.labels & [:inbox, :spam, :deleted, :killed]) == Set.new([:inbox])
+            if (m.labels & ['inbox', 'spam', 'deleted', 'killed']) == Set.new(['inbox'])
               from_and_subj_inbox << [m.from && m.from.longname, m.subj]
               numi += 1
             end
@@ -139,7 +139,7 @@ EOS
         total_numi += numi
       end
 
-      loaded_labels = loaded_labels - LabelManager::HIDDEN_RESERVED_LABELS - [:inbox, :killed]
+      loaded_labels = loaded_labels - LabelManager::HIDDEN_RESERVED_LABELS - ['inbox', 'killed']
       yield "Done polling; loaded #{total_num} new messages total"
       @last_poll = Time.now
       @polling = false
@@ -161,8 +161,8 @@ EOS
           return
         end
 
-        labels = source_labels + (source.archived? ? [] : [:inbox])
-        labels.delete :unread if m.source_marked_read? # preserve read status if possible
+        labels = source_labels + (source.archived? ? [] : ['inbox'])
+        labels.delete 'unread' if m.source_marked_read? # preserve read status if possible
         m = Redwood::Message.parse source.raw_message(offset), source_info: offset, labels: labels
 
         #$hooks.run "before-add-message", :message => m

@@ -768,10 +768,10 @@ private
 
   def get_status_and_title buf
     opts = {
-      :num_inbox => lambda { Index.num_results_for :label => :inbox },
-      :num_inbox_unread => lambda { Index.num_results_for :labels => [:inbox, :unread] },
+      :num_inbox => lambda { Index.num_results_for :label => 'inbox' },
+      :num_inbox_unread => lambda { Index.num_results_for :labels => ['inbox', 'unread'] },
       :num_total => lambda { Index.size },
-      :num_spam => lambda { Index.num_results_for :label => :spam },
+      :num_spam => lambda { Index.num_results_for :label => 'spam' },
       :title => buf.title,
       :mode => buf.mode.name,
       :status => buf.mode.status

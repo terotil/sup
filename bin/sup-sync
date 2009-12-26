@@ -186,11 +186,11 @@ begin
         ## was reset to the beginning above.
       end
 
-      labels = source_labels + (source.archived? ? [] : [:inbox])
+      labels = source_labels + (source.archived? ? [] : ['inbox'])
 
       ## tweak source labels according to commandline arguments if necessary
-      labels.delete :inbox if opts[:archive]
-      labels.delete :unread if opts[:read]
+      labels.delete 'inbox' if opts[:archive]
+      labels.delete 'unread' if opts[:read]
       labels += opts[:extra_labels].split(', ')
 
       ## decide what to do based on message labels and the operation we're performing
@@ -220,7 +220,7 @@ begin
         ##
         ## TODO: refactor such that this isn't duplicated
         if old
-          labels = old_labels + (labels - [:unread, :inbox])
+          labels = old_labels + (labels - ['unread', 'inbox'])
           :add
         else
           :add

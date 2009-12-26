@@ -229,7 +229,7 @@ EOS
 
   def edit_message
     return unless(t = cursor_thread)
-    message, *crap = t.find { |m, *o| m.has_label? :draft }
+    message, *crap = t.find { |m, *o| m.has_label? 'draft' }
     if message
       mode = ResumeMode.new message
       $buffers.spawn "Edit message", mode
@@ -241,19 +241,19 @@ EOS
   ## returns an undo lambda
   def actually_toggle_starred t
     pos = curpos
-    if t.has_label? :starred # if ANY message has a star
-      t.remove_label :starred # remove from all
+    if t.has_label? 'starred' # if ANY message has a star
+      t.remove_label 'starred' # remove from all
       UpdateManager.relay self, :unstarred, t.first
       lambda do
-        t.first.add_label :starred
+        t.first.add_label 'starred'
         UpdateManager.relay self, :starred, t.first
         regen_text
       end
     else
-      t.first.add_label :starred # add only to first
-      UpdateManager.relay self, :starred, t.first
+      t.first.add_label 'starred' # add only to first
+      UpdateManager.relay self, 'starred', t.first
       lambda do
-        t.remove_label :starred
+        t.remove_label 'starred'
         UpdateManager.relay self, :unstarred, t.first
         regen_text
       end
@@ -280,19 +280,19 @@ EOS
   def actually_toggle_archived t
     thread = t
     pos = curpos
-    if t.has_label? :inbox
-      t.remove_label :inbox
+    if t.has_label? 'inbox'
+      t.remove_label 'inbox'
       UpdateManager.relay self, :archived, t.first
       lambda do
-        thread.apply_label :inbox
+        thread.apply_label 'inbox'
         update_text_for_line pos
         UpdateManager.relay self,:unarchived, thread.first
       end
     else
-      t.apply_label :inbox
+      t.apply_label 'inbox'
       UpdateManager.relay self, :unarchived, t.first
       lambda do
-        thread.remove_label :inbox
+        thread.remove_label 'inbox'
         update_text_for_line pos
         UpdateManager.relay self, :unarchived, thread.first
       end
@@ -302,21 +302,21 @@ EOS
   ## returns an undo lambda
   def actually_toggle_spammed t
     thread = t
-    if t.has_label? :spam
-      t.remove_label :spam
+    if t.has_label? 'spam'
+      t.remove_label 'spam'
       add_or_unhide t.first
       UpdateManager.relay self, :unspammed, t.first
       lambda do
-        thread.apply_label :spam
+        thread.apply_label 'spam'
         self.hide_thread thread
         UpdateManager.relay self,:spammed, thread.first
       end
     else
-      t.apply_label :spam
+      t.apply_label 'spam'
       hide_thread t
       UpdateManager.relay self, :spammed, t.first
       lambda do
-        thread.remove_label :spam
+        thread.remove_label 'spam'
         add_or_unhide thread.first
         UpdateManager.relay self,:unspammed, thread.first
       end
@@ -325,21 +325,21 @@ EOS
 
   ## returns an undo lambda
   def actually_toggle_deleted t
-    if t.has_label? :deleted
-      t.remove_label :deleted
+    if t.has_label? 'deleted'
+      t.remove_label 'deleted'
       add_or_unhide t.first
       UpdateManager.relay self, :undeleted, t.first
       lambda do
-        t.apply_label :deleted
+        t.apply_label 'deleted'
         hide_thread t
         UpdateManager.relay self, :deleted, t.first
       end
     else
-      t.apply_label :deleted
+      t.apply_label 'deleted'
       hide_thread t
       UpdateManager.relay self, :deleted, t.first
       lambda do
-        t.remove_label :deleted
+        t.remove_label 'deleted'
         add_or_unhide t.first
         UpdateManager.relay self, :undeleted, t.first
       end
@@ -363,14 +363,14 @@ EOS
 
   def toggle_new
     t = cursor_thread or return
-    t.toggle_label :unread
+    t.toggle_label 'unread'
     update_text_for_line curpos
     cursor_down
     #Index.save_thread t
   end
 
   def multi_toggle_new threads
-    threads.each { |t| t.toggle_label :unread }
+    threads.each { |t| t.toggle_label 'unread' }
     regen_text
     #threads.each { |t| Index.save_thread t }
   end
@@ -395,8 +395,8 @@ EOS
 
   def jump_to_next_new
     n = @mutex.synchronize do
-      ((curpos + 1) ... lines).find { |i| @threads[i].has_label? :unread } ||
-        (0 ... curpos).find { |i| @threads[i].has_label? :unread }
+      ((curpos + 1) ... lines).find { |i| @threads[i].has_label? 'unread' } ||
+        (0 ... curpos).find { |i| @threads[i].has_label? 'unread' }
     end
     if n
       ## jump there if necessary
@@ -451,14 +451,14 @@ EOS
   def multi_kill threads
     $undo.register "killing #{threads.size.pluralize 'thread'}" do
       threads.each do |t|
-        t.remove_label :killed
+        t.remove_label 'killed'
         add_or_unhide t.first
       end
       regen_text
     end
 
     threads.each do |t|
-      t.apply_label :killed
+      t.apply_label 'killed'
       hide_thread t
     end
 
@@ -745,7 +745,7 @@ protected
     seen = {}
     authors = t.map do |m, *o|
       next unless m && m.from
-      new[m.from] ||= m.has_label?(:unread)
+      new[m.from] ||= m.has_label?('unread')
       next if seen[m.from]
       seen[m.from] = true
       m.from
@@ -774,7 +774,7 @@ protected
 
     date = t.date.to_nice_s
 
-    starred = t.has_label? :starred
+    starred = t.has_label? 'starred'
 
     ## format the from column
     cur_width = 0
@@ -810,9 +810,9 @@ protected
     p = dp || t.participants.any? { |p| $accounts.is_account? p }
 
     subj_color =
-      if t.has_label?(:draft)
+      if t.has_label?('draft')
         :index_draft_color
-      elsif t.has_label?(:unread)
+      elsif t.has_label?('unread')
         :index_new_color
       elsif starred
         :index_starred_color
@@ -832,7 +832,7 @@ protected
       from +
       [
       [subj_color, size_widget_text],
-      [:to_me_color, t.labels.member?(:attachment) ? "@" : " "],
+      [:to_me_color, t.labels.member?('attachment') ? "@" : " "],
       [:to_me_color, dp ? ">" : (p ? '+' : " ")],
     ] +
       (t.labels - @hidden_labels).map { |label| [:label_color, "#{label} "] } +

@@ -83,7 +83,7 @@ protected
     counted = labels.map do |label|
       string = $labels.string_for label
       #total = Index.num_results_for :label => label
-      #unread = (label == :unread)? total : Index.num_results_for(:labels => [label, :unread])
+      #unread = (label == 'unread')? total : Index.num_results_for(:labels => [label, 'unread'])
       total = 0
       unread = 0
       [label, string, total, unread]

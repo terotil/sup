@@ -90,7 +90,7 @@ class Thread
   def date; map { |m, *o| m.date if m }.compact.max; end
   def snippet
     with_snippets = select { |m, *o| m && m.snippet && !m.snippet.empty? }
-    first_unread, * = with_snippets.select { |m, *o| m.has_label?(:unread) }.sort_by { |m, *o| m.date }.first
+    first_unread, * = with_snippets.select { |m, *o| m.has_label?('unread') }.sort_by { |m, *o| m.date }.first
     return first_unread.snippet if first_unread
     last_read, * = with_snippets.sort_by { |m, *o| m.date }.last
     return last_read.snippet if last_read

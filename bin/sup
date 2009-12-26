@@ -285,17 +285,17 @@ begin
         reporting_thread("user-invoked unusual poll") { $poll.poll_unusual }
       end
     when :recall_draft
-      case Index.num_results_for :label => :draft
+      case Index.num_results_for :label => 'draft'
       when 0
         bm.flash "No draft messages."
       when 1
         m = nil
-        Index.each_id_by_date(:label => :draft) { |mid, builder| m = builder.call }
+        Index.each_id_by_date(:label => 'draft') { |mid, builder| m = builder.call }
         r = ResumeMode.new(m)
         $buffers.spawn "Edit message", r
         r.edit_message
       else
-        b, new = $buffers.spawn_unless_exists("All drafts") { LabelSearchResultsMode.new [:draft] }
+        b, new = $buffers.spawn_unless_exists("All drafts") { LabelSearchResultsMode.new ['draft'] }
         b.mode.load_threads :num => b.content_height if new
       end
     when :show_inbox

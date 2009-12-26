@@ -175,7 +175,7 @@ class MBox < Source
     end
 
     self.cur_offset = next_offset
-    [returned_offset, (labels + [:unread])]
+    [returned_offset, (labels + ['unread'])]
   end
 end
 

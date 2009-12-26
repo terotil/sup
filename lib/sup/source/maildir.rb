@@ -159,7 +159,7 @@ class Maildir < Source
     start.upto(@ids.length - 1) do |i|         
       id = @ids[i]
       self.cur_offset = id
-      yield id, @labels + (seen?(id) ? [] : [:unread]) + (trashed?(id) ? [:deleted] : []) + (flagged?(id) ? [:starred] : [])
+      yield id, @labels + (seen?(id) ? [] : ['unread']) + (trashed?(id) ? ['deleted'] : []) + (flagged?(id) ? ['starred'] : [])
     end
   end
 

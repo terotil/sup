@@ -6,8 +6,8 @@ class LabelSearchResultsMode < ThreadIndexMode
   def initialize labels
     @labels = labels
     opts = { :labels => @labels }
-    opts[:load_deleted] = true if labels.include? :deleted
-    opts[:load_spam] = true if labels.include? :spam
+    opts[:load_deleted] = true if labels.include? 'deleted'
+    opts[:load_spam] = true if labels.include? 'spam'
     super [], opts
   end
 
@@ -28,7 +28,7 @@ class LabelSearchResultsMode < ThreadIndexMode
     label = $labels.label_for(label) unless label.is_a?(Symbol)
     case label
     when nil
-    when :inbox
+    when 'inbox'
       $buffers.raise_to_front InboxMode.instance.buffer
     else
       b, new = $buffers.spawn_unless_exists("All threads with label '#{label}'") { LabelSearchResultsMode.new [label] }

@@ -13,12 +13,12 @@ class InboxMode < ThreadIndexMode
   end
 
   def initialize
-    super [:inbox, :sent, :draft], { :label => :inbox, :skip_killed => true }
+    super ['inbox', 'sent', 'draft'], { :label => 'inbox', :skip_killed => true }
     raise "can't have more than one!" if defined? @@instance
     @@instance = self
   end
 
-  def is_relevant? m; (m.labels & [:spam, :deleted, :killed, :inbox]) == Set.new([:inbox]) end
+  def is_relevant? m; (m.labels & ['spam', 'deleted', 'killed', 'inbox']) == Set.new(['inbox']) end
 
   def refine_search
     text = $buffers.ask :search, "refine inbox with query: "
@@ -37,11 +37,11 @@ class InboxMode < ThreadIndexMode
     thread = cursor_thread # to make sure lambda only knows about 'old' cursor_thread
 
     $undo.register "archiving thread" do
-      thread.apply_label :inbox
+      thread.apply_label 'inbox'
       add_or_unhide thread.first
     end
 
-    cursor_thread.remove_label :inbox
+    cursor_thread.remove_label 'inbox'
     hide_thread cursor_thread
     regen_text
     #Index.save_thread thread
@@ -50,14 +50,14 @@ class InboxMode < ThreadIndexMode
   def multi_archive threads
     $undo.register "archiving #{threads.size.pluralize 'thread'}" do
       threads.map do |t|
-        t.apply_label :inbox
+        t.apply_label 'inbox'
         add_or_unhide t.first
       end
       regen_text
     end
 
     threads.each do |t|
-      t.remove_label :inbox
+      t.remove_label 'inbox'
       hide_thread t
     end
     regen_text
@@ -69,13 +69,13 @@ class InboxMode < ThreadIndexMode
     thread = cursor_thread # to make sure lambda only knows about 'old' cursor_thread
 
     $undo.register "reading and archiving thread" do
-      thread.apply_label :inbox
-      thread.apply_label :unread
+      thread.apply_label 'inbox'
+      thread.apply_label 'unread'
       add_or_unhide thread.first
     end
 
-    cursor_thread.remove_label :unread
-    cursor_thread.remove_label :inbox
+    cursor_thread.remove_label 'unread'
+    cursor_thread.remove_label 'inbox'
     hide_thread cursor_thread
     regen_text
     Index.save_thread thread
@@ -85,8 +85,8 @@ class InboxMode < ThreadIndexMode
     old_labels = threads.map { |t| t.labels.dup }
 
     threads.each do |t|
-      t.remove_label :unread
-      t.remove_label :inbox
+      t.remove_label 'unread'
+      t.remove_label 'inbox'
       hide_thread t
     end
     regen_text
