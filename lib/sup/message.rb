@@ -461,7 +461,7 @@ class MessageSummary
   end
 
   def labels
-    Set.new(@labels.to_a.map { |x| x.to_sym })
+    Set.new(@labels)
   end
 
   def has_label? l
