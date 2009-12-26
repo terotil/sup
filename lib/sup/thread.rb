@@ -340,7 +340,7 @@ class ThreadSet
   def make_message result
     raw = result['raw']
     raw.force_encoding Encoding::ASCII_8BIT
-    Redwood::Message.parse raw
+    Redwood::Message.parse raw, :labels => result['summary']['labels']
   end
 
   PAGE_SIZE = 100
