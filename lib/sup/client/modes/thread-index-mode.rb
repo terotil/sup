@@ -576,7 +576,7 @@ EOS
     t = cursor_thread or return
     m = t.latest_message
     return if m.nil? # probably won't happen
-    m = $connection.query_full([:term, :msgid, m.id], 0, 1).first
+    m = $connection.query_full(['term', 'msgid', m.id], 0, 1).first
     fail unless m
     mode = ReplyMode.new m, type_arg
     $buffers.spawn "Reply to #{m.subj}", mode
@@ -588,7 +588,7 @@ EOS
     t = cursor_thread or return
     m = t.latest_message
     return if m.nil? # probably won't happen
-    m = $connection.query_full([:term, :msgid, m.id], 0, 1).first
+    m = $connection.query_full(['term', 'msgid', m.id], 0, 1).first
     fail unless m
     ForwardMode.spawn_nicely :message => m
   end
