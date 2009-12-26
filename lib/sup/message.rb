@@ -201,6 +201,18 @@ class Message
     ret
   end
 
+  def add_label l
+    $connection.label ['term', 'msgid', id], [], [l.to_s]
+  end
+
+  def remove_label l
+    $connection.label ['term', 'msgid', id], [l.to_s], []
+  end
+
+  def labels= ls
+    $connection.label ['term', 'msgid', id], @labels, (ls.map { |l| l.to_s })
+  end
+
 private
 
   ## here's where we handle decoding mime attachments. unfortunately
