@@ -77,8 +77,15 @@ EOS
   end
 
   def build_message id
+    unless id
+      warn "requested building a message without an id"
+      return
+    end
     entry = synchronize { get_entry id }
-    return unless entry
+    unless entry
+      warn "could not get entry with id #{id.inspect}"
+      return
+    end
 
     source = SourceManager[entry[:source_id]]
     raise "invalid source #{entry[:source_id]}" unless source
@@ -581,6 +588,9 @@ EOS
     else
       raise "Invalid term type #{type}"
     end
+  rescue StandardError => bang
+    raise "mkterm(%s) exploded: %s" %
+      [[type, *args].map(&:inspect).join(', '), bang]
   end
 end
 
