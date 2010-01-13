@@ -254,6 +254,9 @@ begin
     SearchResultsMode.spawn_from_query $opts[:search]
   end
 
+  no_keystrokes_since = Time.now
+  idle = false
+
   until Redwood::exceptions.nonempty? || $die
     c = begin
       Ncurses.nonblocking_getch
@@ -268,8 +271,21 @@ begin
         debug "redrawing screen on sigwinch"
         BufferManager.completely_redraw_screen
       end
+
+      if !idle and Time.now.to_i - no_keystrokes_since.to_i >= ($config[:idle_threshold] || 60)
+        UpdateManager.relay self, :idle, Time.at(no_keystrokes_since)
+        idle = true
+      end
+
       next
     end
+
+    if idle
+      UpdateManager.relay self, :unidle, Time.at(no_keystrokes_since)
+      idle = false
+    end
+
+    no_keystrokes_since = Time.now
 
     if c == 410
       ## this is ncurses's way of telling us it's detected a refresh.
