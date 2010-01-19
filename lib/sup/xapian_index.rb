@@ -77,11 +77,15 @@ EOS
     entry = synchronize { get_entry id }
     return unless entry
 
-    source = SourceManager[entry[:source_id]]
-    raise "invalid source #{entry[:source_id]}" unless source
+    locations = entry[:locations].map do |source_id,source_info|
+      source = SourceManager[source_id]
+      raise "invalid source #{source_id}" unless source
+      [source, source_info]
+    end
 
-    m = Message.new :source => source, :source_info => entry[:source_info],
-                    :labels => entry[:labels], :snippet => entry[:snippet]
+    m = Message.new :locations => locations,
+                    :labels => entry[:labels],
+                    :snippet => entry[:snippet]
 
     mk_person = lambda { |x| Person.new(*x.reverse!) }
     entry[:from] = mk_person[entry[:from]]
@@ -300,6 +304,7 @@ EOS
     'msgid' => 'Q',
     'thread' => 'H',
     'ref' => 'R',
+    'location' => 'J',
   }
 
   PREFIX = NORMAL_PREFIX.merge BOOLEAN_PREFIX
@@ -422,8 +427,7 @@ EOS
 
     entry = {
       :message_id => m.id,
-      :source_id => m.source.id,
-      :source_info => m.source_info,
+      :locations => m.locations.map { |source,source_info| [source.id, source_info] },
       :date => m.date,
       :snippet => snippet,
       :labels => m.labels.to_a,
@@ -442,6 +446,7 @@ EOS
       index_message_static m, doc, entry
     end
 
+    index_message_locations doc, entry, old_entry
     index_message_threading doc, entry, old_entry
     index_message_labels doc, entry[:labels], (do_index_static ? [] : old_entry[:labels])
     doc.entry = entry
@@ -486,7 +491,6 @@ EOS
     doc.add_term mkterm(:date, m.date) if m.date
     doc.add_term mkterm(:type, 'mail')
     doc.add_term mkterm(:msgid, m.id)
-    doc.add_term mkterm(:source_id, m.source.id)
     m.attachments.each do |a|
       a =~ /\.(\w+)$/ or next
       doc.add_term mkterm(:attachment_extension, $1)
@@ -501,6 +505,13 @@ EOS
 
     doc.add_value MSGID_VALUENO, m.id
     doc.add_value DATE_VALUENO, date_value
+  end
+
+  def index_message_locations doc, entry, old_entry
+    old_entry[:locations].map { |x| x[0] }.uniq.each { |x| doc.remove_term mkterm(:source_id, x) } if old_entry
+    entry[:locations].map { |x| x[0] }.uniq.each { |x| doc.add_term mkterm(:source_id, x) }
+    old_entry[:locations].each { |x| doc.remove_term mkterm(:location, *x) } if old_entry
+    entry[:locations].each { |x| doc.add_term mkterm(:location, *x) }
   end
 
   def index_message_labels doc, new_labels, old_labels
@@ -566,6 +577,8 @@ EOS
       end + args[1].to_s.downcase
     when :source_id
       PREFIX['source_id'] + args[0].to_s.downcase
+    when :location
+      PREFIX['location'] + [args[0]].pack('n') + args[1].to_s
     when :attachment_extension
       PREFIX['attachment_extension'] + args[0].to_s.downcase
     when :msgid, :ref, :thread
