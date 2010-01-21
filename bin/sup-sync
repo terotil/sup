@@ -208,15 +208,15 @@ begin
       ## now, actually do the operation
       case dothis
       when :add_message
-        puts "Adding new message #{source}##{m.source_info} with labels #{m.labels}" if opts[:verbose]
+        puts "Adding new message <#{m.id}> from #{source} with labels #{m.labels}" if opts[:verbose]
         index.add_message m unless opts[:dry_run]
         num_added += 1
       when :update_message
-        puts "Updating message #{source}##{m.source_info}; labels #{old_m.labels} => #{m.labels}; offset #{old_m.source_info} => #{m.source_info}" if opts[:verbose]
+        puts "Updating message <#{m.id}> from #{source} with labels #{old_m.labels} => #{m.labels}; offset #{old_m.source_info} => #{m.source_info}" if opts[:verbose]
         index.update_message m unless opts[:dry_run]
         num_updated += 1
       when :update_message_state
-        puts "Changing flags for #{source}##{m.source_info} from #{m.labels} to #{new_labels}" if opts[:verbose]
+        puts "Changing flags for <#{m.id}> from #{source}; #{m.labels} => #{new_labels}" if opts[:verbose]
         m.labels = new_labels
         index.update_message_state m unless opts[:dry_run]
         num_updated += 1
