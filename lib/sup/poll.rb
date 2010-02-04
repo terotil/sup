@@ -163,7 +163,6 @@ EOS
         m = Message.build_from_source source, offset
         m.labels += source_labels + (source.archived? ? [] : [:inbox])
         m.labels.delete :unread if m.source_marked_read? # preserve read status if possible
-        m.labels.each { |l| LabelManager << l }
 
         HookManager.run "before-add-message", :message => m
         yield m

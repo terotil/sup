@@ -296,12 +296,20 @@ class String
     end
   end
 
-  ## takes a list of words, and returns an array of symbols.  typically used in
+  ## Takes a list of words, and returns a set of given transforms.  Typically used in
   ## Sup for translating Ferret's representation of a list of labels (a string)
-  ## to an array of label symbols.
+  ## to an array of label symbols (see #to_set_of_symbols).
   ##
   ## split_on will be passed to String#split, so you can leave this nil for space.
-  def to_set_of_symbols split_on=nil; Set.new split(split_on).map { |x| x.strip.intern } end
+  def to_set_of mapping, split_on=nil; Set.new split(split_on).map { |x| x.strip.send mapping } end
+
+  def to_set_of_symbols split_on=nil; to_set_of :to_sym, split_on; end
+  def to_set_of_signed_symbols split_on=nil; to_set_of :to_ssym, split_on; end
+
+  def to_ssym
+    dummy, sign, label = self.match(/^(-|\+)?(.*)$/).to_a
+    SignedSymbol.new label.to_sym, ( sign=='-' ? :- : :+ )
+  end
 
   class CheckError < ArgumentError; end
   def check
@@ -329,6 +337,23 @@ class String
   def transcode src_encoding=$encoding
     Iconv.easy_decode $encoding, src_encoding, self
   end
+end
+
+class SignedSymbol
+  def initialize sym, sign
+    @sym = sym
+    @sign = sign
+  end
+  def sym; @sym; end
+  def sign; @sign; end
+end
+
+class Symbol
+  def to_ssym; to_s.to_ssym; end
+end
+
+class Set
+  def to_set_of_signed_symbols; map(&:to_ssym); end
 end
 
 class Numeric

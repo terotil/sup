@@ -536,7 +536,6 @@ EOS
     return unless user_labels
 
     thread.labels = Set.new(keepl) + user_labels
-    user_labels.each { |l| LabelManager << l }
     update_text_for_line curpos
 
     UndoManager.register "labeling thread" do
@@ -554,24 +553,11 @@ EOS
     user_labels = BufferManager.ask_for_labels :labels, "Add/remove labels (use -label to remove): ", [], @hidden_labels
     return unless user_labels
 
-    user_labels.map! { |l| (l.to_s =~ /^-/)? [l.to_s.gsub(/^-?/, '').to_sym, true] : [l, false] }
-    hl = user_labels.select { |(l,_)| @hidden_labels.member? l }
-    unless hl.empty?
-      BufferManager.flash "'#{hl}' is a reserved label!"
-      return
-    end
-
+    user_labels = user_labels.to_set_of_signed_symbols
     old_labels = threads.map { |t| t.labels.dup }
 
     threads.each do |t|
-      user_labels.each do |(l, to_remove)|
-        if to_remove
-          t.remove_label l
-        else
-          t.apply_label l
-          LabelManager << l
-        end
-      end
+      t.edit_labels user_labels
       UpdateManager.relay self, :labeled, t.first
     end
 
@@ -637,7 +623,6 @@ EOS
       ::Thread.pass
       break if @interrupt_search
     end
-    @ts.threads.each { |th| th.labels.each { |l| LabelManager << l } }
 
     update
     BufferManager.clear @mbid

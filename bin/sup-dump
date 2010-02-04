@@ -22,10 +22,15 @@ EOS
   opt :index, "Use this index type ('auto' for autodetect)", :default => "auto"
 end
 
-index = Redwood::Index.init $opts[:index]
-Redwood::SourceManager.init
-index.load
+begin
+  index = Redwood::Index.init $opts[:index]
+  Redwood::LabelManager.init Redwood::LABEL_FN
+  Redwood::SourceManager.init
+  index.load
 
-index.each_message :load_spam => true, :load_deleted => true, :load_killed => true do |m|
-  puts "#{m.id} (#{m.labels.to_a.sort_by { |l| l.to_s } * ' '})"
+  index.each_message :load_spam => true, :load_deleted => true, :load_killed => true do |m|
+    puts "#{m.id} (#{m.labels.to_a.sort_by { |l| l.to_s } * ' '})"
+  end
+ensure
+  Redwood::LabelManager.save if Redwood::LabelManager.instantiated?
 end

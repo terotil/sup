@@ -466,7 +466,6 @@ EOS
       @xapian.replace_document docid, doc
     end
 
-    m.labels.each { |l| LabelManager << l }
     true
   end
 

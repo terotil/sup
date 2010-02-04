@@ -48,6 +48,7 @@ class Message
     @snippet_contains_encrypted_content = false
     @have_snippet = !(opts[:snippet].nil? || opts[:snippet].empty?)
     @labels = Set.new(opts[:labels] || [])
+    @labels.each { |l| LabelManager << l }
     @dirty = false
     @encrypted = false
     @chunks = nil
@@ -198,6 +199,7 @@ class Message
     l = l.to_sym
     return if @labels.member? l
     @labels << l
+    LabelManager << l
     @dirty = true
   end
   def remove_label l
@@ -205,6 +207,20 @@ class Message
     return unless @labels.member? l
     @labels.delete l
     @dirty = true
+  end
+
+  ## Takes either a String or a Set of SignedSymbols.  Edits labels
+  ## accordingly.  Calling m.edit_labels 'foo -index +bar' adds labels
+  ## foo and bar and removes label index.
+  def edit_labels labels
+    labels = labels.to_ssym if labels.is_a? String
+    labels.each do |signedlabel|
+      if signedlabel.sign == :-
+        remove_label signedlabel.sym
+      else
+        add_label signedlabel.sym
+      end
+    end
   end
 
   def recipients
@@ -215,6 +231,7 @@ class Message
     raise ArgumentError, "not a set" unless l.is_a?(Set)
     raise ArgumentError, "not a set of labels" unless l.all? { |ll| ll.is_a?(Symbol) }
     return if @labels == l
+    (l - @labels).each { |ll| LabelManager << ll }
     @labels = l
     @dirty = true
   end

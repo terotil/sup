@@ -110,7 +110,6 @@ class Thread
     end
   end
 
-  def set_labels l; each { |m, *o| m && m.labels = l }; end
   def has_label? t; any? { |m, *o| m && m.has_label?(t) }; end
   def each_dirty_message; each { |m, *o| m && m.dirty? && yield(m) }; end
 
@@ -128,6 +127,12 @@ class Thread
   def labels= l
     raise ArgumentError, "not a set" unless l.is_a?(Set)
     each { |m, *o| m && m.labels = l.dup }
+  end
+
+  ## see Message#edit_labels
+  def edit_labels labels
+    labels = labels.to_ssym if labels.is_a? String
+    each { |m, *o| m.edit_labels labels }
   end
 
   def latest_message

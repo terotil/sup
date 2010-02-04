@@ -273,7 +273,6 @@ EOS
 
     return unless new_labels
     @thread.labels = Set.new(reserved_labels) + new_labels
-    new_labels.each { |l| LabelManager << l }
     update
     UpdateManager.relay self, :labeled, @thread.first
     Index.save_thread @thread
