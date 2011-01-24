@@ -71,6 +71,12 @@ class Person
     end.downcase
   end
 
+  ## return "canonical" person using contact manager or create one if
+  ## not found or contact manager not available
+  def self.from_name_and_email name, email
+    ContactManager.instantiated? && ContactManager.person_for(email) || Person.new(name, email)
+  end
+
   def self.from_address s
     return nil if s.nil?
 
@@ -100,7 +106,7 @@ class Person
         [nil, s]
       end
 
-    Person.new name, email
+    from_name_and_email name, email
   end
 
   def self.from_address_list ss
